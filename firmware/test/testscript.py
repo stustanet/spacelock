@@ -11,7 +11,7 @@ def main():
         b = subprocess.check_output(['sha256sum'], input=data)[:-4]
 
         if a != b:
-            print(i % 64)
+            print((i, i % 64))
             #print(data)
             #print(a)
             #print(b)

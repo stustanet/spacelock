@@ -1,7 +1,5 @@
 #include "sha256.h"
 
-#include <cstdio>
-
 constexpr uint32_t rotate_left(uint32_t a, uint32_t b) {
     return (((a) << (b)) | ((a) >> (32-(b))));
 }
@@ -116,15 +114,11 @@ void SHA256::calculate_digest(uint8_t *digest) {
 
     // Pad whatever data is left in the buffer.
     if (this->datalen < 56) {
-        //printf("\x1b[32;1mrefl\x1b[m\n");
-
         this->data[i++] = 0x80;
         while (i < 56) {
             this->data[i++] = 0x00;
         }
     } else {
-        //printf("\x1b[31;1mlol\x1b[m\n");
-
         this->data[i++] = 0x80;
         while (i < 64) {
             this->data[i++] = 0x00;
@@ -133,7 +127,7 @@ void SHA256::calculate_digest(uint8_t *digest) {
         this->transform();
 
         for (i = 0; i < 56; i++) {
-            this->data[0] = 0;
+            this->data[i] = 0;
         }
     }
 
