@@ -1,0 +1,5 @@
+#include "hmac.h"
+
+const uint8_t SECRET[32] = {
+    0x01, 0x02, 0x03, 0x04
+};

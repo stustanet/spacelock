@@ -1,0 +1,2 @@
+#!/bin/bash
+arm-none-eabi-gdb src/build/Heimdall.elf -ex "target remote localhost:3333"
