@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdint>
 
 #ifndef __cplusplus
@@ -16,3 +18,9 @@ private:
     uint64_t start;
     uint64_t period_us;
 };
+
+/** returns the UNIX time, as synchronized through set_timestamp(). */
+uint64_t get_timestamp();
+
+/** sets a new UNIX time from an external time source */
+void set_timestamp(uint64_t timestamp);

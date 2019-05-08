@@ -1,31 +1,25 @@
-#include <array>
+#include <cstdint>
 #include <cstdio>
+#include <vector>
 
 #include "base64.h"
 
 const char *HEX_CHARS = "0123456789abcdef";
 
 int main() {
-    // SHA256 hash;
-    // std::array<uint8_t, 32> digest;
+    std::vector<uint8_t> buf;
 
-    // while (1) {
-    //     int byte = getchar();
-    //     if (byte < 0) {
-    //         break;
-    //     }
+    while (1) {
+        int byte = getchar();
+        if (byte < 0) {
+            break;
+        }
+        buf.push_back(static_cast<uint8_t>(byte));
+    }
 
-    //     hash.add_byte(static_cast<uint8_t>(byte));
-    // }
+    uint32_t size = base64_decode(buf.data(), buf.size());
 
-    // hash.calculate_digest(digest.data());
-
-    // for (uint8_t byte : digest) {
-    //     putchar(HEX_CHARS[byte >> 4]);
-    //     putchar(HEX_CHARS[byte & 0xf]);
-    // }
-
-    // putchar('\n');
+    fwrite(buf.data(), size, 1, stdout);
 
     return 0;
 }

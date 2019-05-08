@@ -38,6 +38,7 @@ BUILD_DIR = build
 C_SOURCES =  \
 main.c \
 base64.c \
+hmac.c \
 stm32f1xx_it.c \
 stm32f1xx_hal_msp.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c \
@@ -57,11 +58,12 @@ system_stm32f1xx.c
 
 CPP_SOURCES = \
 cpp_main.cpp \
+deserialize.cpp \
+hardware.cpp \
+motor.cpp \
 pin.cpp \
 sha256.cpp \
-sleep.cpp \
-motor.cpp \
-hardware.cpp
+time.cpp
 
 # ASM sources
 ASM_SOURCES =  \

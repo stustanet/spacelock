@@ -5,3 +5,6 @@ sha256test: sha256test.cpp sha256.cpp sha256.h
 
 base64test: base64test.cpp base64.c
 	g++ -std=c++17 base64test.cpp base64.c -o base64test -Wall -Wextra -pedantic
+
+run: sha256test base64test
+	./runtests.py

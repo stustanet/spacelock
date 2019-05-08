@@ -19,21 +19,21 @@ static const uint8_t base64_index[256] = {
    49, 50, 51,  0,  0,  0,  0,  0
 };
 
+#include "stdio.h"
+
 uint32_t base64_decode(uint8_t *buf, const uint32_t bufsize)
 {
-    uint8_t *p = (uint8_t *)buf;
-    uint32_t pad = bufsize > 0 && (bufsize % 4 || p[bufsize - 1] == '=');
+    uint32_t pad = bufsize > 0 && (bufsize % 4 || buf[bufsize - 1] == '=');
 
-    const uint32_t L = ((bufsize + 3) / 4 - pad) * 4;
-    uint32_t resultsize = L / 4 * 3 + pad;
+    const uint32_t full_block_size = ((bufsize + 3) / 4 - pad) * 4;
+    uint32_t resultsize = full_block_size / 4 * 3 + pad;
 
-    for (uint32_t i = 0, j = 0; i < L; i += 4)
-    {
+    for (uint32_t i = 0, j = 0; i < full_block_size; i += 4) {
         int n = (
-            (base64_index[p[i + 0]] << 18) |
-            (base64_index[p[i + 1]] << 12) |
-            (base64_index[p[i + 2]] <<  6) |
-            (base64_index[p[i + 3]] <<  0)
+            (base64_index[buf[i + 0]] << 18) |
+            (base64_index[buf[i + 1]] << 12) |
+            (base64_index[buf[i + 2]] <<  6) |
+            (base64_index[buf[i + 3]] <<  0)
         );
 
         buf[j++] = (uint8_t)(n >> 16);
@@ -41,18 +41,16 @@ uint32_t base64_decode(uint8_t *buf, const uint32_t bufsize)
         buf[j++] = (uint8_t)(n >>  0);
     }
 
-    if (pad)
-    {
+    if (pad) {
         int n = (
-            (base64_index[p[L + 0]] << 18) |
-            (base64_index[p[L + 1]] << 12)
+            (base64_index[buf[full_block_size + 0]] << 18) |
+            (base64_index[buf[full_block_size + 1]] << 12)
         );
 
         buf[resultsize - 1] = (uint8_t)(n >> 16);
 
-        if ((bufsize > (L + 2)) && (p[L + 2] != '='))
-        {
-            n |= (base64_index[p[L + 2]] << 6);
+        if ((bufsize > (full_block_size + 2)) && (buf[full_block_size + 2] != '=')) {
+            n |= (base64_index[buf[full_block_size + 2]] << 6);
             buf[resultsize] = (uint8_t)(n >> 8);
             resultsize++;
         }
