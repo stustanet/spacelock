@@ -14,8 +14,13 @@ int main() {
         if (byte < 0) {
             break;
         }
-        buf.push_back(static_cast<uint8_t>(byte));
+        if (byte != 10) {
+            buf.push_back(static_cast<uint8_t>(byte));
+        }
     }
+
+    //const char *input = "YWJjZGVmZ2hpCmFiY2RlZmdoaQphYmNkZWZnaGkKYWJjZGVmZ2hpCmFiY2RlZmdoaQphYmNkZWZnCg==";
+    //while (*input) { buf.push_back(*(input++)); }
 
     uint32_t size = base64_decode(buf.data(), buf.size());
 
