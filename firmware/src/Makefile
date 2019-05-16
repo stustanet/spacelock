@@ -59,7 +59,9 @@ system_stm32f1xx.c
 CPP_SOURCES = \
 cpp_main.cpp \
 deserialize.cpp \
+gregorian_calendar.cpp \
 hardware.cpp \
+interrupts.cpp \
 motor.cpp \
 pin.cpp \
 sha256.cpp \

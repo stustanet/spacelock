@@ -22,6 +22,8 @@
 #include "main.h"
 
 #include "cpp_main.h"
+#include "hardware.h"
+#include "interrupts.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -235,6 +237,8 @@ static void MX_TIM1_Init(void)
   htim1.Init.RepetitionCounter = 0;
   HAL_TIM_Base_Init(&htim1);
   HAL_TIM_Base_Start(&htim1);
+
+  add_systick_callback(timer_update_extended_bits);
 }
 
 /* USER CODE BEGIN 4 */

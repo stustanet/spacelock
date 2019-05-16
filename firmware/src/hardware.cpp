@@ -19,6 +19,19 @@ uint64_t time_get_64() {
     return (timer_extended_bits << 15) | timer_val;
 }
 
+uint32_t time_get_64_isr() {
+    uint16_t timer_val = time_get_16();
+
+    bool extended_lsb = timer_extended_bits & 1;
+    bool timer_msb = timer_val & 0x8000;
+
+    if (extended_lsb != timer_msb) {
+        timer_extended_bits += 1;
+    }
+
+    return (timer_extended_bits << 15) | timer_val;
+}
+
 void timer_update_extended_bits() {
     bool extended_lsb = timer_extended_bits & 1;
     bool timer_msb = time_get_16() & 0x8000;

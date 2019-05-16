@@ -23,6 +23,7 @@
 #include "stm32f1xx_it.h"
 
 #include "hardware.h"
+#include "interrupts.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -185,11 +186,12 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-  timer_update_extended_bits();
 
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
+
+  on_systick();
 
   /* USER CODE END SysTick_IRQn 1 */
 }

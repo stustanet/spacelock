@@ -67,6 +67,13 @@ inline uint16_t time_get_16() {
 
 /**
  * Gets a 64-bit timer value in us since boot.
+ * Must be called form an ISR, otherwise the
+ * behavior is undefined.
+ */
+uint32_t time_get_64_isr();
+
+/**
+ * Gets a 64-bit timer value in us since boot.
  * Overflowsn't.
  */
 uint64_t time_get_64();
