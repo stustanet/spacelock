@@ -4,75 +4,41 @@ from datetime import datetime
 import random
 import subprocess
 
+def dcf77test():
+    # data provided by dcf77logs.de
+    with open('dcf77testdata') as fileobj:
+        lines = fileobj.read().split('\n')[:-1]
+
+    timestamps = []
+    bitstrings = []
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        bits, timestring, timezone = line.split(', ')
+
+        bits = bits.split('  ')[0]
+        if timezone == 'SZ':
+            timezone = '+0200'
+        else:
+            timezone = '+0100'
+
+        dt = datetime.strptime(timestring + ' ' + timezone, '%d.%m.%y %H:%M:%S %z')
+
+        timestamps.append(int(dt.timestamp()))
+        bitstrings.append(bits)
+
+    results = subprocess.check_output(['./dcf77test'], input=('\n'.join(bitstrings)+'\n').encode())
+    results = [int(x) for x in results.decode().split('\n')[:-1]]
+
+    if results != timestamps:
+        print((results, timestamps))
+
 def gregtest():
-    test_dates = [
-        '2000-01-01',
-        '2000-01-02',
-        '2000-02-01',
-        '2000-03-01',
-        '2001-03-01',
-        '2002-03-01',
-        '2003-03-01',
-        '2004-03-01',
-        '2005-03-01',
-        '2006-03-01',
-        '2007-03-01',
-        '2008-03-01',
-        '2009-03-01',
-        '2094-03-01',
-        '2095-03-01',
-        '2096-03-01',
-        '2097-03-01',
-        '2098-03-01',
-        '2099-03-01',
-        '2100-03-01',
-        '2101-03-01',
-        '2102-03-01',
-        '2103-03-01',
-        '2104-03-01',
-        '2105-03-01',
-        '2106-03-01',
-        '2199-03-01',
-        '2200-03-01',
-        '2201-03-01',
-        '2202-03-01',
-        '2203-03-01',
-        '2204-03-01',
-        '2205-03-01',
-        '2299-03-01',
-        '2300-03-01',
-        '2301-03-01',
-        '2399-03-01',
-        '2400-03-01',
-        '2401-03-01',
-        '2402-03-01',
-        '2402-04-01',
-        '2402-05-01',
-        '2402-06-01',
-        '2402-07-01',
-        '2402-08-01',
-        '2402-09-01',
-        '2402-10-01',
-        '2402-11-01',
-        '2402-12-01',
-        '2402-12-20',
-        '2402-12-30',
-        '2402-12-31',
-        '2403-01-01',
-        '2404-01-31',
-        '2404-02-29',
-        '2404-03-31',
-        '2404-04-30',
-        '2404-05-31',
-        '2404-06-30',
-        '2404-07-31',
-        '2404-08-31',
-        '2404-09-30',
-        '2404-10-31',
-        '2404-11-30',
-        '2404-12-31',
-        '9999-10-10',
-    ]
+    with open('gregoriancalendartestdata') as fileobj:
+        test_dates = fileobj.read().split('\n')[:-1]
 
     text = ('\n'.join(test_dates) + '\n').encode()
     results = subprocess.check_output(['./gregoriancalendartest'], input=text)
@@ -92,6 +58,7 @@ def randbytes(count):
 
 def main():
     gregtest()
+    dcf77test()
 
     for bytecount in list(range(1024)) + [2**x for x in range(11, 21)]:
         data = randbytes(bytecount)

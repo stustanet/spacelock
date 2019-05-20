@@ -58,6 +58,8 @@ system_stm32f1xx.c
 
 CPP_SOURCES = \
 cpp_main.cpp \
+dcf77.cpp \
+dcf77_analyze.cpp \
 deserialize.cpp \
 gregorian_calendar.cpp \
 hardware.cpp \

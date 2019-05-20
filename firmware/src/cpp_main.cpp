@@ -1,6 +1,7 @@
 #include "stm32f1xx_hal.h"
 
 #include "base64.h"
+#include "dcf77.h"
 #include "deserialize.h"
 #include "hardware.h"
 #include "hmac.h"
@@ -50,6 +51,9 @@ static void cpp_main_in_cpp() {
         InputPin(GPIOA, GPIO_PIN_1),           // clockwise end switch
         InputPin(GPIOA, GPIO_PIN_0)            // counterclockwise end switch
     );
+
+    InputPin dcf77_pin(GPIOA, GPIO_PIN_8);
+    dcf77_init(&dcf77_pin);
 
     while (1)
     {
