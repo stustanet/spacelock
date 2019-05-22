@@ -38,7 +38,6 @@ BUILD_DIR = build
 C_SOURCES =  \
 main.c \
 base64.c \
-hmac.c \
 stm32f1xx_it.c \
 stm32f1xx_hal_msp.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c \
@@ -66,6 +65,7 @@ hardware.cpp \
 interrupts.cpp \
 motor.cpp \
 pin.cpp \
+secret_key.cpp \
 sha256.cpp \
 time.cpp
 

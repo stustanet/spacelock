@@ -65,8 +65,9 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 /* Specify the memory areas */
 MEMORY
 {
-RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 20K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 64K
+RAM (xrw)              : ORIGIN = 0x20000000, LENGTH = 20K
+FLASH (rx)             : ORIGIN =  0x8000000, LENGTH = 63K
+KEY_STORAGE (rw)       : ORIGIN =  0x800fc00, LENGTH =  1K
 }
 
 /* Define output sections */
@@ -96,6 +97,8 @@ SECTIONS
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
   } >FLASH
+
+  .key_storage : {} > KEY_STORAGE
 
   /* Constant data goes into FLASH */
   .rodata :

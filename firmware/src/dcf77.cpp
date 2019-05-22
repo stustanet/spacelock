@@ -17,7 +17,7 @@ static std::bitset<60> rx_bits;
 static uint8_t rx_bitcount = 0;
 static InputPin *input_pin;
 static bool last_input = false;
-static uint64_t last_input_time;
+static uint32_t last_input_time;
 
 void dcf77_init(InputPin *pin) {
     input_pin = pin;
@@ -32,7 +32,7 @@ static void dcf77_update() {
 
     uint64_t edge_timestamp = time_get_64_isr();
     uint32_t time_delta = static_cast<uint32_t>(edge_timestamp) - last_input_time;
-    last_input_time = edge_timestamp;
+    last_input_time = static_cast<uint32_t>(edge_timestamp);
 
     if (input) {
         // Rising edge; analyze length of the negative duty cycle:
@@ -74,10 +74,10 @@ static void dcf77_update() {
         //  0.07s - 0.13s: bit 0
         //  0.17s - 0.23s: bit 1
 
-        if ((time_delta >= 70000) && (time_delta <= 130000)) {
+        if ((time_delta >= 70000) && (time_delta <= 150000)) {
             // We have received a "0" bit.
             rx_bits[rx_bitcount++] = 0;
-        } else if ((time_delta >= 170000) && (time_delta <= 230000)) {
+        } else if ((time_delta >= 170000) && (time_delta <= 260000)) {
             // We have received a "1" bit.
             rx_bits[rx_bitcount++] = 1;
         } else {

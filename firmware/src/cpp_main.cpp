@@ -4,7 +4,7 @@
 #include "dcf77.h"
 #include "deserialize.h"
 #include "hardware.h"
-#include "hmac.h"
+#include "secret_key.h"
 #include "motor.h"
 #include "sha256.h"
 #include "time.h"
@@ -26,6 +26,10 @@ static void open_door(StepperMotor &motor) {
 }
 
 static bool check_info(const uint8_t *info, uint32_t info_size) {
+    if (info_size < 1) {
+        return false;
+    }
+
     while (info_size) {
         if (*info < 0x20 || *info >= 0x7f) {
             // illegal character in info string
@@ -40,13 +44,13 @@ static bool check_info(const uint8_t *info, uint32_t info_size) {
 
 static void cpp_main_in_cpp() {
     StepperMotor motor(
-        OutputPin(GPIOA, GPIO_PIN_7),          // step
+        OutputPin(GPIOA, GPIO_PIN_5),          // step
         OutputPin(GPIOA, GPIO_PIN_6),          // sleep
-        OutputPin(GPIOA, GPIO_PIN_5),          // direction
+        OutputPin(GPIOA, GPIO_PIN_4),          // direction
         {
-            OutputPin(GPIOA, GPIO_PIN_4),      // microstep modesel 0
-            OutputPin(GPIOA, GPIO_PIN_3),      // microstep modesel 1
-            OutputPin(GPIOA, GPIO_PIN_2)       // microstep modesel 2
+            OutputPin(GPIOB, GPIO_PIN_10),     // microstep modesel 0
+            OutputPin(GPIOB, GPIO_PIN_1),      // microstep modesel 1
+            OutputPin(GPIOB, GPIO_PIN_0)       // microstep modesel 2
         },
         InputPin(GPIOA, GPIO_PIN_1),           // clockwise end switch
         InputPin(GPIOA, GPIO_PIN_0)            // counterclockwise end switch
@@ -92,63 +96,83 @@ static void cpp_main_in_cpp() {
             continue;
         }
 
-        // calculate the message HMAC
-        if (size <= HMAC_SIZE) {
-            // the HMAC-signed message is empty
+        // all messages have the following format:
+        //    uint8_t   hmac_signature[HMAC_SIZE]
+        //    uint64_t  valid_from
+        //    uint64_t  valid_until
+        //    uint8_t   type
+        //    uint8_t   payload[]       (variable length)
+
+        if (size <= HMAC_SIZE + 17) {
+            // the message is too small
             continue;
         }
 
+        // calculate the message HMAC
         SHA256 hash;
-        hash.update(SECRET, sizeof(SECRET));
+        hash.update(SECRET_KEY, sizeof(SECRET_KEY));
         hash.update(message->buf.data() + HMAC_SIZE, size - HMAC_SIZE);
         uint8_t digest[32];
         hash.calculate_digest(digest);
+    
+        // prevent timing side-channel attacks through the use of 'volatile'
+        volatile bool signature_ok = true;
         for (uint32_t i = 0; i < HMAC_SIZE; i++) {
-            if (digest[i] != message->buf[i]) {
-                // the HMAC signature is wrong
-                continue;
-            }
+            signature_ok &= (digest[i] == message->buf[i]);
+        }
+        if (!signature_ok) { continue; }
+
+        // see if the timestamp is valid.
+        uint64_t valid_from = deserialize_u64(&message->buf[HMAC_SIZE]);
+        uint64_t valid_until = deserialize_u64(&message->buf[HMAC_SIZE + 8]);
+
+        uint64_t current_timestamp = get_timestamp();
+
+        if (valid_from > current_timestamp) {
+            // message is not yet valid
+            continue;
+        }
+        if (valid_until < current_timestamp) {
+            // mesage is no longer valid
+            continue;
         }
 
-        // looks like the message is valid.
-        // check its type.
+        const uint8_t message_type = message->buf[HMAC_SIZE + 16];
+        const uint8_t *payload = &(message->buf[HMAC_SIZE + 17]);
+        uint8_t payload_size = size - HMAC_SIZE - 17;
 
-        switch (message->buf[HMAC_SIZE]) {
+        // the message is valid, do its bidding.
+        switch (message_type) {
         case 0x01: {
-            // this message consists of:
-            //    uint8_t   type            = 0x01
-            //    uint64_t  valid_from
-            //    uint64_t  valid_until
-            //    char *    info            (variable length)
+            // an 'open the door' message.
+            // payload:
+            //    char *    uid             (variable length)
 
-            if (size < HMAC_SIZE + 17) {
-                // the message is too small.
-                continue;
-            }
-
-            uint64_t valid_from = deserialize_u64(&message->buf[HMAC_SIZE + 1]);
-            uint64_t valid_until = deserialize_u64(&message->buf[HMAC_SIZE + 9]);
-
-            uint64_t current_timestamp = get_timestamp();
-
-            if (valid_from > current_timestamp) {
-                // token is not yet valid
-                continue;
-            }
-            if (valid_until < current_timestamp) {
-                // token is no longer valid
-                continue;
-            }
-
-            uint8_t *info = &message->buf[HMAC_SIZE + 17];
-            uint32_t info_size = size - HMAC_SIZE - 17;
-            if (!check_info(info, info_size)) {
+            if (!check_info(payload, payload_size)) {
                 // info is not valid
                 continue;
             }
 
             // it seems like you're in luck.
             open_door(motor);
+            break;
+        }
+        case 0x02: {
+            // an 'new SECRET_KEY' message.
+            // payload:
+            //    uint8_t *    new_key_seed            (variable length)
+
+            if (payload_size < 1) { continue; }
+
+            // calculate the new secret key
+            SHA256 hash;
+            hash.update(SECRET_KEY, sizeof(SECRET_KEY));
+            hash.update(payload, payload_size);
+            uint8_t digest[32];
+            hash.calculate_digest(digest);
+
+            // write the new secret key
+            secret_key_write(digest);
 
             break;
         }

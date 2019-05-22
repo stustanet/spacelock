@@ -2,43 +2,62 @@
 
 #include <array>
 
-static uint64_t timer_extended_bits;
+static uint64_t timer_extended_bits = 0;
 
 uint64_t time_get_64() {
     CriticalSectionLock lk;
-
-    uint16_t timer_val = time_get_16();
-
-    bool extended_lsb = timer_extended_bits & 1;
-    bool timer_msb = timer_val & 0x8000;
-
-    if (extended_lsb != timer_msb) {
-        timer_extended_bits += 1;
-    }
-
-    return (timer_extended_bits << 15) | timer_val;
+    return time_get_64_isr();
 }
 
-uint32_t time_get_64_isr() {
+static uint64_t prev_result = 0;
+
+
+// extended bits                      timer
+// 00000000000000000000000000         00000000
+// 00000000000000000000000000         01111111
+// 00000000000000000000000001         10000000       inc
+// 00000000000000000000000001         10000000
+// 00000000000000000000000001         11111111
+// 00000000000000000000000010         00000000       inc
+// 00000000000000000000000010         00000010
+
+
+uint64_t time_get_64_isr() {
     uint16_t timer_val = time_get_16();
 
-    bool extended_lsb = timer_extended_bits & 1;
     bool timer_msb = timer_val & 0x8000;
 
-    if (extended_lsb != timer_msb) {
+    if ((timer_extended_bits & 1) != timer_msb) {
         timer_extended_bits += 1;
     }
 
-    return (timer_extended_bits << 15) | timer_val;
+    uint64_t result = (
+        static_cast<uint64_t>(timer_extended_bits << 15) |
+        static_cast<uint64_t>(timer_val)
+    );
+
+    if (result < prev_result) {
+        // wtf this is supposed to be monotonic
+        // this can happen if interrupts were blocked for > 30ms
+
+        // let's try to restore monotonoty...
+        result += 0x10000;
+        timer_extended_bits += 2;
+    }
+    prev_result = result;
+
+    return result;
 }
 
 void timer_update_extended_bits() {
-    bool extended_lsb = timer_extended_bits & 1;
+    /**
     bool timer_msb = time_get_16() & 0x8000;
 
-    if (extended_lsb != timer_msb) {
+    if ((timer_extended_bits & 1) != timer_msb) {
         timer_extended_bits += 1;
     }
+    */
+    time_get_64_isr();
 }
 
 // the UART rx buffers are double-buffered.
