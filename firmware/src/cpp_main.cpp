@@ -52,8 +52,8 @@ static void cpp_main_in_cpp() {
             OutputPin(GPIOB, GPIO_PIN_1),      // microstep modesel 1
             OutputPin(GPIOB, GPIO_PIN_0)       // microstep modesel 2
         },
-        InputPin(GPIOA, GPIO_PIN_1),           // clockwise end switch
-        InputPin(GPIOA, GPIO_PIN_0)            // counterclockwise end switch
+        InputPin(GPIOB, GPIO_PIN_5),           // clockwise end switch
+        InputPin(GPIOB, GPIO_PIN_6)            // counterclockwise end switch
     );
 
     InputPin dcf77_pin(GPIOA, GPIO_PIN_8);

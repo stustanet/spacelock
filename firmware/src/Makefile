@@ -62,6 +62,7 @@ dcf77_analyze.cpp \
 deserialize.cpp \
 gregorian_calendar.cpp \
 hardware.cpp \
+hmac.cpp \
 interrupts.cpp \
 motor.cpp \
 pin.cpp \
