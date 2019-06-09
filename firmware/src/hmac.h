@@ -6,4 +6,6 @@
 #error "this header file cannot be included in C mode"
 #endif
 
-void hmac(const uint8_t *data, uint32_t len, uint32_t result[32]);
+#define HMAC_SIZE 16
+
+void hmac(const uint8_t *data, uint32_t len, uint8_t result[32]);

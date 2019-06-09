@@ -4,8 +4,9 @@
 #include "dcf77.h"
 #include "deserialize.h"
 #include "hardware.h"
-#include "secret_key.h"
+#include "hmac.h"
 #include "motor.h"
+#include "secret_key.h"
 #include "sha256.h"
 #include "time.h"
 
@@ -109,11 +110,8 @@ static void cpp_main_in_cpp() {
         }
 
         // calculate the message HMAC
-        SHA256 hash;
-        hash.update(SECRET_KEY, sizeof(SECRET_KEY));
-        hash.update(message->buf.data() + HMAC_SIZE, size - HMAC_SIZE);
         uint8_t digest[32];
-        hash.calculate_digest(digest);
+        hmac(message->buf.data() + HMAC_SIZE, size - HMAC_SIZE, digest);
     
         // prevent timing side-channel attacks through the use of 'volatile'
         volatile bool signature_ok = true;
