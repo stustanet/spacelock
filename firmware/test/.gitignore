@@ -1,6 +1,3 @@
 /base64test
 /sha256test
-sha256test
-gregoriancalendartest
-dcf77test
-base64test
+/hmactest

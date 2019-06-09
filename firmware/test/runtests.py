@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 from datetime import datetime
-import random
+import hmac
 import subprocess
+
 
 def dcf77test():
     # data provided by dcf77logs.de
@@ -36,6 +37,7 @@ def dcf77test():
     if results != timestamps:
         print((results, timestamps))
 
+
 def gregtest():
     with open('gregoriancalendartestdata') as fileobj:
         test_dates = fileobj.read().split('\n')[:-1]
@@ -52,9 +54,11 @@ def gregtest():
         if res_doy != exp_doy or res_dow != exp_dow or res_ts != exp_ts:
             print((test_date, exp_doy, res_doy, exp_dow, res_dow, exp_ts, res_ts))
 
+
 def randbytes(count):
     with open('/dev/urandom', 'rb') as randfile:
         return randfile.read(count)
+
 
 def main():
     gregtest()
@@ -80,6 +84,17 @@ def main():
             print(subprocess.check_output(['xxd'], input=data).decode())
             print(subprocess.check_output(['xxd'], input=b).decode())
             return 2
+
+        key = randbytes(32)
+        a = hmac.new(key, data, 'sha256').digest()
+        b = subprocess.check_output(['./hmactest'], input=(b"%s%s" % (key, data)))
+
+        if a != b:
+            print("hmac wrong at bytecount %d\n" % (bytecount,))
+            print(subprocess.check_output(['xxd'], input=a).decode())
+            print(subprocess.check_output(['xxd'], input=b).decode())
+            return 3
+
     return 0
 
 if __name__ == '__main__':

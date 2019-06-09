@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 
 extern const uint8_t SECRET_KEY[32];
 
