@@ -57,6 +57,21 @@ static void cpp_main_in_cpp() {
         InputPin(GPIOB, GPIO_PIN_6)            // counterclockwise end switch
     );
 
+    OutputPin led_a_b(GPIOA, GPIO_PIN_0);
+    OutputPin led_a_g(GPIOA, GPIO_PIN_1);
+    OutputPin led_a_r(GPIOA, GPIO_PIN_2);
+
+    OutputPin led_b_r(GPIOC, GPIO_PIN_14);
+    // LED b.green is connected directly to the DCF77 signal
+    OutputPin led_b_b(GPIOC, GPIO_PIN_15);
+
+    //led_a_r.set();
+    led_a_g.set();
+    //led_a_b.set();
+
+    //led_b_r.set();
+    //led_b_b.set();
+
     InputPin dcf77_pin(GPIOA, GPIO_PIN_8);
     dcf77_init(&dcf77_pin);
 
