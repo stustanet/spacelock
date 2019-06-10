@@ -22,5 +22,5 @@ private:
 /** returns the UNIX time, as synchronized through set_timestamp(). */
 uint64_t get_timestamp();
 
-/** sets a new UNIX time from an external time source */
-void set_timestamp(uint64_t timestamp);
+/** sets a new UNIX time from an external time source, valid at monotonic_timestamp */
+void set_timestamp(uint64_t monotonic_timestamp, uint64_t unix_timestamp);

@@ -211,6 +211,10 @@ void USART1_IRQHandler(void)
   {
     uart_data_received(huart1.Instance->DR);
   }
+  if (huart1.Instance->SR & USART_SR_TXE)
+  {
+    uart_transmit_next();
+  }
 }
 
 /* USER CODE END 1 */

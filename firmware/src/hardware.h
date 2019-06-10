@@ -43,6 +43,18 @@ public:
     }
 };
 
+class UARTTxBuffer {
+public:
+    std::array<uint8_t, 256> buf;
+    uint32_t start_pos = 0;
+    uint32_t end_pos = 0;
+
+    int get_next();
+    bool add(uint8_t byte);
+    bool add(const char *buf);
+    bool add(const uint8_t *buf, uint32_t len);
+};
+
 /**
  * Returns nullptr if no new message has been received.
  * Returns UARTRxBuffer containing a message if a new message has been
@@ -88,6 +100,16 @@ void timer_update_extended_bits();
  * To be called from the UART RX interrupt handler
  */
 void uart_data_received(uint8_t byte);
+
+/**
+ * To be called from the UART TX interrupt handler
+ */
+void uart_transmit_next();
+
+/**
+ * Transmits a line on UART.
+ */
+void uart_writeline(const char *text);
 
 #ifdef __cplusplus
 }

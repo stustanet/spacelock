@@ -2,6 +2,8 @@
 
 #include <array>
 
+#include "main.h"
+
 static uint64_t timer_extended_bits = 0;
 
 uint64_t time_get_64() {
@@ -77,6 +79,32 @@ void uart_data_received(uint8_t byte) {
     }
 }
 
+UARTTxBuffer txbuf;
+
+void uart_transmit_next() {
+    if (!(huart1.Instance->SR & USART_SR_TXE)) {
+        // currently transmitting
+        return;
+    }
+
+    int byte = txbuf.get_next();
+    if (byte < 0) {
+        // we're done. manually reset the TC bit,
+        // otherwise we'll get an infinite interrupt loop.
+        huart1.Instance->SR &= ~USART_SR_TC;
+    } else {
+        // send the next byte
+        huart1.Instance->DR = byte;
+    }
+}
+
+void uart_writeline(const char *text) {
+    txbuf.add(text);
+    txbuf.add('\r');
+    txbuf.add('\n');
+    uart_transmit_next();
+}
+
 UARTRxBuffer *uart_poll_message() {
     CriticalSectionLock lk;
 
@@ -90,4 +118,40 @@ UARTRxBuffer *uart_poll_message() {
     current_procbuf = tmp;
 
     return tmp;
+}
+
+int UARTTxBuffer::get_next() {
+    if (this->start_pos == this->end_pos) { return -1; }
+    uint8_t result = this->buf[this->start_pos];
+    start_pos = (start_pos + 1) % this->buf.size();
+    return result;
+}
+
+bool UARTTxBuffer::add(uint8_t byte) {
+    CriticalSectionLock lk;
+
+    uint32_t new_end_pos = (this->end_pos + 1) % this->buf.size();
+    if (new_end_pos == this->start_pos) {
+        // the tx buffer is full
+        return false;
+    }
+
+    this->buf[this->end_pos] = byte;
+    this->end_pos = new_end_pos;
+    return true;
+}
+
+bool UARTTxBuffer::add(const char *buf) {
+    while (*buf) {
+        if (!this->add(static_cast<uint8_t>(*(buf++)))) { return false; }
+    }
+    return true;
+
+}
+
+bool UARTTxBuffer::add(const uint8_t *buf, uint32_t len) {
+    while (len-- > 0) {
+        if (!this->add(*(buf++))) { return false; }
+    }
+    return true;
 }

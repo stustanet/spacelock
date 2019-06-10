@@ -181,7 +181,10 @@ static void MX_USART1_UART_Init(void)
   }
   /* USER CODE BEGIN USART1_Init 2 */
 
-  huart1.Instance->CR1 |= USART_CR1_RXNEIE;
+  huart1.Instance->CR1 |= (
+    USART_CR1_RXNEIE |
+    USART_CR1_TCIE
+  );
   HAL_NVIC_SetPriority(USART1_IRQn, 4, 0);
   HAL_NVIC_EnableIRQ(USART1_IRQn);
 

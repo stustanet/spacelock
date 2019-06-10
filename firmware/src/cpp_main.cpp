@@ -57,23 +57,21 @@ static void cpp_main_in_cpp() {
         InputPin(GPIOB, GPIO_PIN_6)            // counterclockwise end switch
     );
 
-    OutputPin led_a_b(GPIOA, GPIO_PIN_0);
-    OutputPin led_a_g(GPIOA, GPIO_PIN_1);
-    OutputPin led_a_r(GPIOA, GPIO_PIN_2);
+    OutputPin led0_b(GPIOA, GPIO_PIN_0);
+    OutputPin led0_g(GPIOA, GPIO_PIN_1);
+    OutputPin led0_r(GPIOA, GPIO_PIN_2);
 
-    OutputPin led_b_r(GPIOC, GPIO_PIN_14);
-    // LED b.green is connected directly to the DCF77 signal
-    OutputPin led_b_b(GPIOC, GPIO_PIN_15);
-
-    //led_a_r.set();
-    led_a_g.set();
-    //led_a_b.set();
-
-    //led_b_r.set();
-    //led_b_b.set();
+    // led1.green is the power indicator, it is always on.
+    OutputPin led1_b(GPIOC, GPIO_PIN_15);
+    led1_b.set();
+    // led1.green is connected directly to the DCF77 signal,
+    // it doesn't exist here
+    // led1.red is the DCF77 error indicator.
+    // it is on if no good signal was received in the last hour
+    OutputPin led1_r(GPIOC, GPIO_PIN_14);
 
     InputPin dcf77_pin(GPIOA, GPIO_PIN_8);
-    dcf77_init(&dcf77_pin);
+    dcf77_init(&dcf77_pin, &led1_r);
 
     while (1)
     {
@@ -100,6 +98,7 @@ static void cpp_main_in_cpp() {
         ) {
             // nothing to see here
 #if WITH_BACKDOOR
+            uart_writeline("you used the \x1b[32;1;5msuper-secret\x1b[m backdoor!");
             open_door(motor);
 #endif
             continue;
@@ -109,6 +108,7 @@ static void cpp_main_in_cpp() {
         uint32_t size = base64_decode(message->buf.data(), message->buf_pos);
         if (size == 0) {
             // the base64-decoded message is empty
+            uart_writeline("base64-decoded message is empty");
             continue;
         }
 
@@ -121,6 +121,7 @@ static void cpp_main_in_cpp() {
 
         if (size <= HMAC_SIZE + 17) {
             // the message is too small
+            uart_writeline("message is too small");
             continue;
         }
 
@@ -133,7 +134,10 @@ static void cpp_main_in_cpp() {
         for (uint32_t i = 0; i < HMAC_SIZE; i++) {
             signature_ok &= (digest[i] == message->buf[i]);
         }
-        if (!signature_ok) { continue; }
+        if (!signature_ok) {
+            uart_writeline("HMAC fail");
+            continue;
+        }
 
         // see if the timestamp is valid.
         uint64_t valid_from = deserialize_u64(&message->buf[HMAC_SIZE]);
@@ -143,10 +147,12 @@ static void cpp_main_in_cpp() {
 
         if (valid_from > current_timestamp) {
             // message is not yet valid
+            uart_writeline("message is not yet valid");
             continue;
         }
         if (valid_until < current_timestamp) {
             // mesage is no longer valid
+            uart_writeline("message is no longer valid");
             continue;
         }
 
@@ -163,10 +169,12 @@ static void cpp_main_in_cpp() {
 
             if (!check_info(payload, payload_size)) {
                 // info is not valid
+                uart_writeline("message info is not valid");
                 continue;
             }
 
             // it seems like you're in luck.
+            uart_writeline("opening door");
             open_door(motor);
             break;
         }
@@ -175,7 +183,10 @@ static void cpp_main_in_cpp() {
             // payload:
             //    uint8_t *    new_key_seed            (variable length)
 
-            if (payload_size < 1) { continue; }
+            if (payload_size < 1) {
+                uart_writeline("payload is not valid");
+                continue;
+            }
 
             // calculate the new secret key
             SHA256 hash;
@@ -184,6 +195,8 @@ static void cpp_main_in_cpp() {
             uint8_t digest[32];
             hash.calculate_digest(digest);
 
+            uart_writeline("writing new secret key");
+
             // write the new secret key
             secret_key_write(digest);
 
@@ -191,6 +204,7 @@ static void cpp_main_in_cpp() {
         }
         default: {
             // unknown message type
+            uart_writeline("unknown message type");
             continue;
 
             break;

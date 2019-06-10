@@ -16,12 +16,12 @@ bool secret_key_write(uint8_t secret_key[32]) {
     erase_init.NbPages = 1;
 
     uint32_t page_error;
-    volatile auto a = HAL_FLASHEx_Erase(&erase_init, &page_error);
+    HAL_FLASHEx_Erase(&erase_init, &page_error);
 
     for (uint8_t i = 0; i < sizeof(SECRET_KEY)/2; i++) {
-        volatile auto b = HAL_FLASH_Program(
+        HAL_FLASH_Program(
             FLASH_TYPEPROGRAM_HALFWORD,
-            reinterpret_cast<uint32_t>(&SECRET_KEY),
+            reinterpret_cast<uint32_t>(&SECRET_KEY) + i * 2,
             reinterpret_cast<uint16_t *>(secret_key)[i]
         );
     }

@@ -36,9 +36,9 @@ uint64_t get_timestamp() {
     return (time_get_64() / static_cast<uint64_t>(1000000)) + get_timestamp_offset();
 }
 
-void set_timestamp(uint64_t timestamp) {
-    uint64_t microseconds_since_boot = time_get_64();
+void set_timestamp(uint64_t monotonic_timestamp, uint64_t unix_timestamp) {
+    uint64_t microseconds_since_boot = monotonic_timestamp;
     uint64_t seconds_since_boot = microseconds_since_boot / static_cast<uint64_t>(1000000);
 
-    timestamp_offset = timestamp - seconds_since_boot;
+    timestamp_offset = unix_timestamp - seconds_since_boot;
 }

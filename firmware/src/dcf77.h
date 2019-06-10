@@ -4,4 +4,4 @@
 
 #include "pin.h"
 
-void dcf77_init(InputPin *dcf_pin);
+void dcf77_init(InputPin *pin, OutputPin *error_led);

@@ -16,23 +16,32 @@ static void dcf77_update();
 static std::bitset<60> rx_bits;
 static uint8_t rx_bitcount = 0;
 static InputPin *input_pin;
+static OutputPin *error_pin;
 static bool last_input = false;
 static uint32_t last_input_time;
+static uint64_t last_good_minute_timestamp = 0x8000000000000000ULL;
 
-void dcf77_init(InputPin *pin) {
+void dcf77_init(InputPin *pin, OutputPin *error_led) {
     input_pin = pin;
+    error_pin = error_led;
     last_input_time = time_get_64();
     add_systick_callback(dcf77_update);
 }
 
 static void dcf77_update() {
+    uint64_t monotonic_time = time_get_64_isr();
+    if (static_cast<uint64_t>(monotonic_time - last_good_minute_timestamp) > 3600000000) {
+        error_pin->set();
+    } else {
+        error_pin->reset();
+    }
+
     bool input = input_pin->get();
     if (input == last_input) { return; }
     last_input = input;
 
-    uint64_t edge_timestamp = time_get_64_isr();
-    uint32_t time_delta = static_cast<uint32_t>(edge_timestamp) - last_input_time;
-    last_input_time = static_cast<uint32_t>(edge_timestamp);
+    uint32_t time_delta = static_cast<uint32_t>(monotonic_time) - last_input_time;
+    last_input_time = static_cast<uint32_t>(monotonic_time);
 
     if (input) {
         // Rising edge; analyze length of the negative duty cycle:
@@ -48,8 +57,10 @@ static void dcf77_update() {
             // (this includes checking whether there are any/the
             //  right number of bits and whether they make the
             //  tiniest bit of sense).
-            if (dcf77_analyze(rx_bits, rx_bitcount, edge_timestamp)) {
-                set_timestamp(edge_timestamp);
+            uint64_t unix_timestamp;
+            if (dcf77_analyze(rx_bits, rx_bitcount, unix_timestamp)) {
+                set_timestamp(monotonic_time, unix_timestamp);
+                last_good_minute_timestamp = monotonic_time;
             }
             rx_bitcount = 0;
         } else {
