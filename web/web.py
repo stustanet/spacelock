@@ -1,10 +1,12 @@
 import os
 from flask import Flask, render_template, request
+from flask_qrcode import QRcode
 
 from utils import Database
 
 
 app = Flask(__name__)
+QRcode(app)
 
 
 def db_config():
@@ -12,8 +14,8 @@ def db_config():
         'database': os.environ['SPACELOCK_DB_NAME'],
         'user': os.environ['SPACELOCK_DB_USER'],
         'password': os.environ['SPACELOCK_DB_PASS'],
-        'host': os.environ['SPACELOCK_DB_HOST'],
-        'port': int(os.environ['SPACELOCK_DB_PORT'])
+        'host': os.environ.get('SPACELOCK_DB_HOST') or 'localhost',
+        'port': int(os.environ.get('SPACELOCK_DB_PORT') or 5432)
     }
 
 
