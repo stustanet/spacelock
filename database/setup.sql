@@ -31,6 +31,7 @@ create table if not exists permissions (
 	key text unique not null,
 	valid_from timestamp with time zone not null,
 	valid_to timestamp with time zone not null,
+	token_validity_time int not null,
 	active boolean not null
 );
 
@@ -80,6 +81,7 @@ declare entry permissions%ROWTYPE;
 declare now_time timestamp with time zone;
 declare signing_key text;
 declare token text;
+declare token_validity_time int;
 begin
 	select now() into now_time;
 
@@ -90,6 +92,7 @@ begin
 		active is true and
 		valid_from <= now_time and
 		valid_to >= now_time;
+
 	if entry is NULL then
 		return NULL;
 	end if;
@@ -102,7 +105,7 @@ begin
 	select sign_message(
 		signing_key,
 		extract(epoch from now_time),
-		300,  -- 5 minutes token validity
+		entry.token_validity_time,
 		0,    -- message type 0: open door
 		entry.description
 	) into token;
