@@ -29,7 +29,6 @@ def gen_token(key):
 def index():
     if request.method == 'POST':
         token = gen_token(request.form['secret_key'])
-        print(token)
         if token is None:
             return render_template('error.html', error='DENIED!!!')
 
