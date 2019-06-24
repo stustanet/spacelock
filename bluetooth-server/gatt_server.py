@@ -1,21 +1,16 @@
 from __future__ import print_function
-import dbus
-import dbus.exceptions
-import dbus.mainloop.glib
-import dbus.service
 
 import array
-
 import functools
 
+import dbus
+
 try:
-  from gi.repository import GObject
+    from gi.repository import GObject
 except ImportError:
-  import gobject as GObject
+    import gobject as GObject
 
-from random import randint
-
-from mice import send_token
+from tokens import send_token
 
 import exceptions
 import adapters
@@ -30,20 +25,20 @@ LE_ADVERTISEMENT_IFACE = 'org.bluez.LEAdvertisement1'
 GATT_MANAGER_IFACE = 'org.bluez.GattManager1'
 
 GATT_SERVICE_IFACE = 'org.bluez.GattService1'
-GATT_CHRC_IFACE =    'org.bluez.GattCharacteristic1'
-GATT_DESC_IFACE =    'org.bluez.GattDescriptor1'
-
+GATT_CHRC_IFACE = 'org.bluez.GattCharacteristic1'
+GATT_DESC_IFACE = 'org.bluez.GattDescriptor1'
 
 
 class Application(dbus.service.Object):
     """
     org.bluez.GattApplication1 interface implementation
     """
+
     def __init__(self, bus):
         self.path = '/'
         self.services = []
         dbus.service.Object.__init__(self, bus, self.path)
-        self.add_service(TestService(bus, 0))
+        self.add_service(SpacelockService(bus, 0))
 
     def get_path(self):
         return dbus.ObjectPath(self.path)
@@ -84,13 +79,13 @@ class Service(dbus.service.Object):
 
     def get_properties(self):
         return {
-                GATT_SERVICE_IFACE: {
-                        'UUID': self.uuid,
-                        'Primary': self.primary,
-                        'Characteristics': dbus.Array(
-                                self.get_characteristic_paths(),
-                                signature='o')
-                }
+            GATT_SERVICE_IFACE: {
+                'UUID': self.uuid,
+                'Primary': self.primary,
+                'Characteristics': dbus.Array(
+                    self.get_characteristic_paths(),
+                    signature='o')
+            }
         }
 
     def get_path(self):
@@ -122,6 +117,7 @@ class Characteristic(dbus.service.Object):
     """
     org.bluez.GattCharacteristic1 interface implementation
     """
+
     def __init__(self, bus, index, uuid, flags, service):
         self.path = service.path + '/char' + str(index)
         self.bus = bus
@@ -133,14 +129,14 @@ class Characteristic(dbus.service.Object):
 
     def get_properties(self):
         return {
-                GATT_CHRC_IFACE: {
-                        'Service': self.service.get_path(),
-                        'UUID': self.uuid,
-                        'Flags': self.flags,
-                        'Descriptors': dbus.Array(
-                                self.get_descriptor_paths(),
-                                signature='o')
-                }
+            GATT_CHRC_IFACE: {
+                'Service': self.service.get_path(),
+                'UUID': self.uuid,
+                'Flags': self.flags,
+                'Descriptors': dbus.Array(
+                    self.get_descriptor_paths(),
+                    signature='o')
+            }
         }
 
     def get_path(self):
@@ -168,8 +164,8 @@ class Characteristic(dbus.service.Object):
         return self.get_properties()[GATT_CHRC_IFACE]
 
     @dbus.service.method(GATT_CHRC_IFACE,
-                        in_signature='a{sv}',
-                        out_signature='ay')
+                         in_signature='a{sv}',
+                         out_signature='ay')
     def ReadValue(self, options):
         print('Default ReadValue called, returning error')
         raise exceptions.NotSupportedException()
@@ -199,6 +195,7 @@ class Descriptor(dbus.service.Object):
     """
     org.bluez.GattDescriptor1 interface implementation
     """
+
     def __init__(self, bus, index, uuid, flags, characteristic):
         self.path = characteristic.path + '/desc' + str(index)
         self.bus = bus
@@ -209,11 +206,11 @@ class Descriptor(dbus.service.Object):
 
     def get_properties(self):
         return {
-                GATT_DESC_IFACE: {
-                        'Characteristic': self.chrc.get_path(),
-                        'UUID': self.uuid,
-                        'Flags': self.flags,
-                }
+            GATT_DESC_IFACE: {
+                'Characteristic': self.chrc.get_path(),
+                'UUID': self.uuid,
+                'Flags': self.flags,
+            }
         }
 
     def get_path(self):
@@ -229,8 +226,8 @@ class Descriptor(dbus.service.Object):
         return self.get_properties()[GATT_DESC_IFACE]
 
     @dbus.service.method(GATT_DESC_IFACE,
-                        in_signature='a{sv}',
-                        out_signature='ay')
+                         in_signature='a{sv}',
+                         out_signature='ay')
     def ReadValue(self, options):
         print('Default ReadValue called, returning error')
         raise exceptions.NotSupportedException()
@@ -241,22 +238,20 @@ class Descriptor(dbus.service.Object):
         raise exceptions.NotSupportedException()
 
 
-class TestService(Service):
+class SpacelockService(Service):
     """
-    Dummy test service that provides characteristics and descriptors that
-    exercise various API functionality.
-
+    Spacelock bluetooth service
     """
-    TEST_SVC_UUID = '12345678-1234-5678-1234-56789abcdef0'
+    SVC_UUID = '12345678-1234-5678-1234-56789abcdef0'
 
     def __init__(self, bus, index):
-        Service.__init__(self, bus, index, self.TEST_SVC_UUID, True)
-        self.add_characteristic(TestSecureCharacteristic(bus, 0, self))
+        Service.__init__(self, bus, index, self.SVC_UUID, True)
+        self.add_characteristic(SpacelockCharacteristic(bus, 0, self))
+
 
 class CharacteristicUserDescriptionDescriptor(Descriptor):
     """
-    Writable CUD descriptor.
-
+    Writable characteristic to send tokens to
     """
     CUD_UUID = '2901'
 
@@ -265,10 +260,10 @@ class CharacteristicUserDescriptionDescriptor(Descriptor):
         self.value = array.array('B', b'This is a characteristic for testing')
         self.value = self.value.tolist()
         Descriptor.__init__(
-                self, bus, index,
-                self.CUD_UUID,
-                ['write'],
-                characteristic)
+            self, bus, index,
+            self.CUD_UUID,
+            ['write'],
+            characteristic)
 
     def ReadValue(self, options):
         return self.value
@@ -279,56 +274,41 @@ class CharacteristicUserDescriptionDescriptor(Descriptor):
         self.value = value
 
 
-class TestSecureCharacteristic(Characteristic):
-    """
-    Dummy test characteristic requiring secure connection.
-
-    """
-    TEST_CHRC_UUID = '12345678-1234-5678-1234-56789abcdef5'
+class SpacelockCharacteristic(Characteristic):
+    CHRC_UUID = '12345678-1234-5678-1234-56789abcdef5'
 
     def __init__(self, bus, index, service):
         Characteristic.__init__(
-                self, bus, index,
-                self.TEST_CHRC_UUID,
-                ['secure-write'],
-                service)
+            self, bus, index,
+            self.CHRC_UUID,
+            ['secure-write'],
+            service)
         self.value = []
-        self.add_descriptor(TestSecureDescriptor(bus, 2, self))
+        self.add_descriptor(SpacelockDescriptor(bus, 2, self))
         self.add_descriptor(
-                CharacteristicUserDescriptionDescriptor(bus, 3, self))
+            CharacteristicUserDescriptionDescriptor(bus, 3, self))
 
     def WriteValue(self, value, options):
-        print('TestSecureCharacteristic Write: ' + repr(value))
-        # self.value = value
-        print(len(value))
-        val = bytes(value)#.decode('ascii')
-        print(val)
-        print(len(val))
-        val = val.decode('ascii')
-        print(val)
-        print(len(val))
+        print('SpacelockCharacteristic Write: ' + repr(value))
+        val = bytes(value).decode('ascii')
         send_token(val)
 
 
-
-class TestSecureDescriptor(Descriptor):
-    """
-    Dummy test descriptor requiring secure connection. Returns a static value.
-
-    """
-    TEST_DESC_UUID = '12345678-1234-5678-1234-56789abcdef6'
+class SpacelockDescriptor(Descriptor):
+    DESC_UUID = '12345678-1234-5678-1234-56789abcdef6'
 
     def __init__(self, bus, index, characteristic):
         Descriptor.__init__(
-                self, bus, index,
-                self.TEST_DESC_UUID,
-                ['secure-write'],
-                characteristic)
+            self, bus, index,
+            self.DESC_UUID,
+            ['secure-write'],
+            characteristic)
 
     def ReadValue(self, options):
         return [
-                dbus.Byte('T'), dbus.Byte('e'), dbus.Byte('s'), dbus.Byte('t')
+            dbus.Byte('T'), dbus.Byte('e'), dbus.Byte('s'), dbus.Byte('t')
         ]
+
 
 def register_app_cb():
     print('GATT application registered')
@@ -345,14 +325,13 @@ def gatt_server_main(mainloop, bus, adapter_name):
         raise Exception('GattManager1 interface not found')
 
     service_manager = dbus.Interface(
-            bus.get_object(BLUEZ_SERVICE_NAME, adapter),
-            GATT_MANAGER_IFACE)
+        bus.get_object(BLUEZ_SERVICE_NAME, adapter),
+        GATT_MANAGER_IFACE)
 
     app = Application(bus)
 
     print('Registering GATT application...')
 
     service_manager.RegisterApplication(app.get_path(), {},
-                                    reply_handler=register_app_cb,
-                                    error_handler=functools.partial(register_app_error_cb, mainloop))
-
+                                        reply_handler=register_app_cb,
+                                        error_handler=functools.partial(register_app_error_cb, mainloop))

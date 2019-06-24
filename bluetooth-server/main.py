@@ -1,14 +1,11 @@
 from __future__ import print_function
-import dbus
-import dbus.exceptions
-import dbus.mainloop.glib
-import dbus.service
 
-import array
+import dbus
+
 try:
-  from gi.repository import GObject
+    from gi.repository import GObject
 except ImportError:
-  import gobject as GObject
+    import gobject as GObject
 import advertising
 import gatt_server
 import argparse
@@ -27,6 +24,7 @@ def main():
     advertising.advertising_main(mainloop, bus, adapter_name)
     gatt_server.gatt_server_main(mainloop, bus, adapter_name)
     mainloop.run()
+
 
 if __name__ == '__main__':
     main()

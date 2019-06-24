@@ -1,13 +1,9 @@
 from __future__ import print_function
 import dbus
-import dbus.exceptions
-import dbus.mainloop.glib
-import dbus.service
 import functools
 
 import exceptions
 import adapters
-
 
 BLUEZ_SERVICE_NAME = 'org.bluez'
 LE_ADVERTISING_MANAGER_IFACE = 'org.bluez.LEAdvertisingManager1'
@@ -128,4 +124,3 @@ def advertising_main(mainloop, bus, adapter_name):
     ad_manager.RegisterAdvertisement(test_advertisement.get_path(), {},
                                      reply_handler=register_ad_cb,
                                      error_handler=functools.partial(register_ad_error_cb, mainloop))
-
