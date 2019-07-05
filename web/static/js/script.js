@@ -1,4 +1,6 @@
 function sendToken(token) {
+  console.log('Sending token: ' + token);
+
   const serviceUUID = '12345678-1234-5678-1234-56789abcdef0';
   const characteristicUUID = '12345678-1234-5678-1234-56789abcdef5';
   const options = {
@@ -20,13 +22,14 @@ function sendToken(token) {
     .then(server => server.getPrimaryService(serviceUUID))
     .then(service => service.getCharacteristic(characteristicUUID))
     .then(characteristic => {
-      const t = Uint8Array.from(atob(token), c => c.charCodeAt(0));
+      const t = Uint8Array.from(token, c => c.charCodeAt(0));
       return characteristic.writeValue(t);
     })
     .then(_ => {
-      console.log('Successfully sent token:', token);
+      alert('Successfully sent token!');
     })
     .catch(error => {
+      alert('Something went wrong:\n' + error);
       console.log('Argh! ' + error);
     });
 }
