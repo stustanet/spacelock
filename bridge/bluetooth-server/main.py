@@ -1,6 +1,8 @@
 from __future__ import print_function
 
 import dbus
+import dbus.service
+import dbus.mainloop.glib
 
 try:
     from gi.repository import GObject
