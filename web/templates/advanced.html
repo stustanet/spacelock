@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% set active_page = "advanced" %}
+
+{% block body %}
+  <div class="container pt-3">
+    <div class="row justify-content-center">
+      <div class="col-sm-12 col-md-8 col-lg-8">
+        <div class="card">
+          <div class="card-header">
+            User Management
+          </div>
+          <div class="card-body">
+            <ul class="list-group">
+              {% for user in users %}
+                <div class="list-group-item {% if not user.active %}disabled{% endif %} flex-column align-items-start">
+                  <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">{{ user.description }}</h5>
+                    <button class="btn btn-sm btn-outline-primary"
+                            onclick="openUserModal('{{ user.description }}', '{{ user.valid_from }}', '{{ user.valid_to }}', {{ user.token_validity_time }}, '{{ user.active }}')">
+                      Change
+                    </button>
+                  </div>
+                  <div class="d-flex w-100 justify-content-start">
+                    <small>{{ user.valid_from }} until {{ user.valid_to }}</small>
+                    <small class="pl-2">validity: {{ user.token_validity_time }}</small>
+                  </div>
+                </div>
+              {% endfor %}
+            </ul>
+            <hr>
+            <div class="d-flex justify-content-center">
+              <button type="button" class="btn btn-outline-primary" onclick="openUserModal()">
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal fade" id="add-user-modal" tabindex="-1" role="dialog" aria-labelledby="Add User" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="add-user-modal-title">Add Permission</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="user-add-form" class="needs-validation" novalidate>
+            <div class="card-text">
+              <div class="form-group">
+                <label for="input-secret-key">Secret Key</label>
+                <input type="password" class="form-control" id="input-secret-key" name='secret_key'
+                       placeholder="Your Key"
+                       required>
+                <div class="invalid-feedback">
+                  Key is required
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="input-user-comment">Comment</label>
+                <input type="text" class="form-control" id="input-user-comment" name='comment'
+                       placeholder="e.g. Access for <username>" required>
+                <div class="invalid-feedback">
+                  Comment is required
+                </div>
+              </div>
+              <div class="form-row">
+                <label for="input-valid-from-date">From</label>
+              </div>
+              <div class="form-row">
+                <div class="col-6 mb-3">
+                  <input type="date" class="form-control" id="input-valid-from-date" name='valid_from_date' required>
+
+                  <div class="invalid-feedback">
+                    Date is required
+                  </div>
+                </div>
+                <div class="col-6 mb-3">
+                  <input type="time" class="form-control" id="input-valid-from-time" name='valid_from_time' required>
+                  <div class="invalid-feedback">
+                    Time is required
+                  </div>
+                </div>
+              </div>
+              <div class="form-row">
+                <label for="input-valid-to-date">To</label>
+              </div>
+              <div class="form-row">
+                <div class="col-6 mb-3">
+                  <input type="date" class="form-control" id="input-valid-to-date" name='valid_to_date' required>
+                  <div class="invalid-feedback">
+                    Date is required
+                  </div>
+                </div>
+                <div class="col-6 mb-3">
+                  <input type="time" class="form-control" id="input-valid-to-time" name='valid_to_time' required>
+                  <div class="invalid-feedback">
+                    Time is required
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="input-validity-time">Token valid for</label>
+                <input type="number" class="form-control" id="input-validity-time" name='token_validity_time'
+                       placeholder="duration in min" required>
+              </div>
+
+              <div class="form-group">
+                <label for="input-active">Active</label>
+                <input type="checkbox" class="form-control" id="input-active" name='active'>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-outline-success" onclick="validate()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script type="text/javascript">
+    // Example starter JavaScript for disabling form submissions if there are invalid fields
+    function validate() {
+      const form = document.getElementById('user-add-form');
+      if (form.checkValidity() === true) {
+        // send
+      }
+      form.classList.add('was-validated');
+    }
+
+  </script>
+
+{% endblock %}
