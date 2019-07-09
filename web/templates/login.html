@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-header">
+      <h5 class="card-title">Login for Avanced stuff</h5>
+    </div>
+    <div class="card-body">
+      <form action="/login" method="post">
+        <div class="card-text">
+          <div class="form-group">
+            <label for="secret-key">Secret Key</label>
+            <input type="password" class="form-control" id="secret-key" name='secret_key' placeholder="Your Key">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-outline-success float-right">Submit</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

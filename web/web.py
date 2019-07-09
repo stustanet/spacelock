@@ -1,28 +1,27 @@
 import json
 import os
-from flask import Flask, render_template, request
+
+from flask import Flask, render_template, request, redirect, url_for, flash
+from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from flask_qrcode import QRcode
 
-from utils import Database
+from authentication import User
+from db import gen_token
+
 
 app = Flask(__name__)
+app.secret_key = os.environ['FLASK_SECRET_KEY']
+
 QRcode(app)
 
-
-def db_config():
-    return {
-        'database': os.environ['SPACELOCK_DB_NAME'],
-        'user': os.environ['SPACELOCK_DB_USER'],
-        'password': os.environ['SPACELOCK_DB_PASS'],
-        'host': os.environ.get('SPACELOCK_DB_HOST') or 'localhost',
-        'port': int(os.environ.get('SPACELOCK_DB_PORT') or 5432)
-    }
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
 
 
-def gen_token(key):
-    with Database(db_config()) as db:
-        db.execute('SELECT gen_token(%s)', (key,))
-        return db.fetchone()[0]
+@login_manager.user_loader
+def load_user(user_id):
+    return User.get(user_id)
 
 
 @app.route('/api/token', methods=['POST'])
@@ -57,7 +56,30 @@ def api_token():
         )
 
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('advanced'))
+
+    if request.method == 'POST':
+        user = User(0)  # User.login(key=request.form.get('secret_key')).first()
+        if user is None:
+            flash('Invalid username or password')
+            return redirect(url_for('login'))
+        login_user(user)
+        return redirect(url_for('advanced'))
+    else:
+        return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
+
+
 @app.route('/advanced', methods=['GET'])
+@login_required
 def advanced():
     data = {
         'users': [
@@ -86,7 +108,7 @@ def advanced():
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        token = gen_token(request.form['secret_key'])
+        token = gen_token(request.form.get('secret_key'))
         if token is None:
             return render_template('error.html', error='DENIED!!!')
 
