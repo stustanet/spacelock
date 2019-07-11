@@ -85,7 +85,7 @@ end $$;
 
 
 -- permission verification is done here:
-create or replace function can_access(permission_key text, what access_class)
+create or replace function can_access(user_name text, permission_key text, what access_class)
 returns bigint as $$
 declare entry permissions%ROWTYPE;
 declare now_time timestamp with time zone;
@@ -95,6 +95,7 @@ begin
 	select * into entry
 	from permissions
 	where
+		name = user_name and
 		key = crypt(permission_key, key) and
 		active is true and
 		valid_from <= now_time and
@@ -117,7 +118,7 @@ security definer;
 -- this function will be executed in setuid-mode!
 -- to grant access, use:
 --   grant execute on function gen_token to some_insecure_user;
-create or replace function gen_token(permission_key text)
+create or replace function gen_token(user_name text, permission_key text)
 returns text as $$
 declare entry_id bigint;
 declare entry permissions%ROWTYPE;
@@ -128,7 +129,7 @@ declare token_duration int;
 begin
 	select now() into now_time;
 
-	select can_access(permission_key, 'token') into entry_id;
+	select can_access(user_name, permission_key, 'token') into entry_id;
 	select * into entry from permissions where id = entry_id;
 
 	if entry is NULL then
@@ -195,17 +196,18 @@ security definer;
 
 -- change a user's validity times
 create or replace function user_mod(
+	admin_name text,
 	admin_token text,
 	target_name text,
 	_valid_from timestamp with time zone,
 	_valid_to timestamp with time zone,
 	_token_validity_time int,
-	_usermod boolean default false
+	enable_usermod boolean default false
 ) returns text as $$
 declare entry_id bigint;
 declare entry permissions%ROWTYPE;
 begin
-	select can_access(admin_token, 'usermod') into entry_id;
+	select can_access(admin_name, admin_token, 'usermod') into entry_id;
 	select * into entry from permissions where id = entry_id;
 
 	if entry is null then
@@ -217,7 +219,7 @@ begin
 		valid_from = _valid_from,
 		valid_to = _valid_to,
 		token_validity_time = _token_validity_time,
-		usermod = _usermod
+		usermod = enable_usermod
 	where
 		name = target_name;
 
@@ -234,6 +236,7 @@ security definer;
 
 -- set the user active flag
 create or replace function user_set_active(
+	admin_name text,
 	admin_token text,
 	target_name text,
 	_active boolean
@@ -242,7 +245,7 @@ declare entry_id bigint;
 declare entry permissions%ROWTYPE;
 declare previous_state bool;
 begin
-	select can_access(admin_token, 'usermod') into entry_id;
+	select can_access(admin_name, admin_token, 'usermod') into entry_id;
 	select * into entry from permissions where id = entry_id;
 
 	if entry is null then
@@ -276,19 +279,34 @@ security definer;
 
 -- grant access to a newly created user
 create or replace function user_grant_access(
+	admin_name text,
 	admin_token text,
 	target_name text,
 	valid_from timestamp with time zone default now(),
 	valid_to timestamp with time zone default (now() + interval '31' day),
 	token_validity_time int default 86400  -- 24 hours
 ) returns text as $$
+declare entry_id bigint;
 begin
+	select can_access(admin_name, admin_token, 'usermod') into entry_id;
+
+	if entry_id is null then
+		return null;
+	end if;
+
 	if user_mod(admin_token, target_name, valid_from, valid_to, token_validity_time) is null then
 		return null;
 	end if;
-	if user_enable(admin_token, target_name) is null then
+
+	if user_enable(admin_name, admin_token, target_name) is null then
 		return null;
 	end if;
+
+	update permissions set
+		granted_by = entry_id
+	where
+		name = target_name;
+
 	return 'ok';
 end;
 $$ language plpgsql
@@ -325,6 +343,7 @@ $$ language plpgsql;
 
 -- update a user password, requires the old password
 create or replace function user_new_password(
+	user_name text,
 	permission_key text
 ) returns text as $$
 declare entry permissions%ROWTYPE;
@@ -333,6 +352,7 @@ begin
 	select * into entry
 	from permissions
 	where
+		name = user_name and
 		key = crypt(permission_key, key);
 
 	if entry is null then
@@ -360,11 +380,12 @@ security definer;
 
 -- disable an existing user
 create or replace function user_disable(
+	admin_name text,
 	admin_token text,
 	target_name text
 ) returns text as $$
 begin
-	return user_set_active(admin_token, target_name, false);
+	return user_set_active(admin_name, admin_token, target_name, false);
 end;
 $$ language plpgsql
 security definer;
@@ -372,11 +393,12 @@ security definer;
 
 -- enable an existing user
 create or replace function user_enable(
+	admin_name text,
 	admin_token text,
 	target_name text
 ) returns text as $$
 begin
-	return user_set_active(admin_token, target_name, true);
+	return user_set_active(admin_name, admin_token, target_name, true);
 end;
 $$ language plpgsql
 security definer;
@@ -384,13 +406,14 @@ security definer;
 
 -- remove a user's account
 create or replace function user_del(
+	admin_name text,
 	admin_token text,
 	target_name text
 ) returns text as $$
 declare entry_id bigint;
 declare entry permissions%ROWTYPE;
 begin
-	select can_access(admin_token, 'usermod') into entry_id;
+	select can_access(admin_name, admin_token, 'usermod') into entry_id;
 	select * into entry from permissions where id = entry_id;
 
 	if entry is null then
@@ -413,6 +436,7 @@ security definer;
 
 -- list all users
 create or replace function user_list(
+	user_name text,
 	permission_key text
 )
 returns table (
@@ -428,7 +452,7 @@ returns table (
 declare entry_id bigint;
 declare entry permissions%ROWTYPE;
 begin
-	select can_access(permission_key, 'usermod') into entry_id;
+	select can_access(user_name, permission_key, 'usermod') into entry_id;
 	select * into entry from permissions where id = entry_id;
 
 	if entry is null then
