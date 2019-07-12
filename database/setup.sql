@@ -15,6 +15,17 @@
 -- regular usage:
 -- * generate an door-opening token with `gen_token(password)`
 
+-- many of the functions are be executed in setuid-mode ("security definer")!
+-- to grant access to them, use:
+--   grant execute on function some_function_name to some_insecure_user;
+--
+-- to further increase security through separation, you can add multiple users:
+-- recommendation:
+--   gen_token  ->  allow for the user that receives uuid-passwords
+--                  and serves e.g. a webfrontend
+--   can_access ->  allow for a user that checks if a somebody may manage other users
+--   user_*     ->  allow for a user that serves a user-management UI
+
 
 -- we use plpython
 -- the user loading this file needs superuser access,
@@ -126,9 +137,6 @@ security definer;
 
 
 -- token generation, this is the entry point for untrusted users
--- this function will be executed in setuid-mode!
--- to grant access, use:
---   grant execute on function gen_token to some_insecure_user;
 create or replace function gen_token (
 	permission_key text
 )
