@@ -4,17 +4,18 @@ import db
 
 
 class User(UserMixin):
-    def __init__(self, user_id):
+    def __init__(self, user_id, name):
         self.id = user_id
+        self.name = name
 
     def get_id(self):
         return self.id
 
     @staticmethod
-    def login(key):
-        user_id = db.get_user_by_key(key)
+    def login(name, key):
+        user_id = db.can_access(name, key, 'usermod')
         if key is not None:
-            return User(user_id)
+            return User(user_id, name)
         else:
             return None
 

@@ -43,10 +43,16 @@ def db_config():
     }
 
 
-def gen_token(key):
+def gen_token(username, key):
     with Database(db_config()) as db:
-        db.execute('SELECT gen_token(%s)', (key,))
+        db.execute('SELECT gen_token(%s, %s)', (username, key))
         return db.fetchone()[0]
+
+
+def can_access(username, key, access_class) -> int:
+    with Database(db_config()) as db:
+        db.execute('SELECT can_access(%s, %s, %s)', (username, key, access_class))
+        return db.fetchone()
 
 
 def get_user_by_key(key):
@@ -59,3 +65,9 @@ def get_user_by_id(user_id):
     with Database(db_config()) as db:
         db.execute('SELECT get_user_by_id(%s)', (user_id,))
         return db.fetchone()
+
+
+def get_user_list(username, key):
+    with Database(db_config()) as db:
+        db.execute('SELECT user_list(%s, %s)', (username, key))
+        return db.fetchall()

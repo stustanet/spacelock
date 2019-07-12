@@ -14,9 +14,18 @@
               {% for user in users %}
                 <div class="list-group-item {% if not user.active %}disabled{% endif %} flex-column align-items-start">
                   <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">{{ user.description }}</h5>
+                    <h5 class="mb-1">{{ user.name }}</h5>
+                    {% if user.active %}
+                      <button class="btn btn-sm btn-outline-danger" onclick="disableUser('{{ user.name }}')">
+                        Disable
+                      </button>
+                    {% else %}
+                      <button class="btn btn-sm btn-outline-success" onclick="enableUser('{{ user.name }}')">
+                        Enable
+                      </button>
+                    {% endif %}
                     <button class="btn btn-sm btn-outline-primary"
-                            onclick="openUserModal('{{ user.description }}', '{{ user.valid_from }}', '{{ user.valid_to }}', {{ user.token_validity_time }}, '{{ user.active }}')">
+                            onclick="openUserModal('{{ user.name }}', '{{ user.valid_from }}', '{{ user.valid_to }}', {{ user.token_validity_time }})">
                       Change
                     </button>
                   </div>
@@ -50,23 +59,14 @@
           </button>
         </div>
         <div class="modal-body">
-          <form id="user-add-form" class="needs-validation" novalidate>
+          <form id="user-change-form" class="needs-validation" novalidate>
             <div class="card-text">
               <div class="form-group">
-                <label for="input-secret-key">Secret Key</label>
-                <input type="password" class="form-control" id="input-secret-key" name='secret_key'
-                       placeholder="Your Key"
-                       required>
+                <label for="input-username">Username</label>
+                <input type="text" class="form-control" id="input-username" name='username'
+                       placeholder="Username" required disabled>
                 <div class="invalid-feedback">
-                  Key is required
-                </div>
-              </div>
-              <div class="form-group">
-                <label for="input-user-comment">Comment</label>
-                <input type="text" class="form-control" id="input-user-comment" name='comment'
-                       placeholder="e.g. Access for <username>" required>
-                <div class="invalid-feedback">
-                  Comment is required
+                  Username is required
                 </div>
               </div>
               <div class="form-row">
@@ -110,11 +110,6 @@
                 <input type="number" class="form-control" id="input-validity-time" name='token_validity_time'
                        placeholder="duration in min" required>
               </div>
-
-              <div class="form-group">
-                <label for="input-active">Active</label>
-                <input type="checkbox" class="form-control" id="input-active" name='active'>
-              </div>
             </div>
           </form>
         </div>
@@ -131,7 +126,7 @@
   <script type="text/javascript">
     // Example starter JavaScript for disabling form submissions if there are invalid fields
     function validate() {
-      const form = document.getElementById('user-add-form');
+      const form = document.getElementById('user-change-form');
       if (form.checkValidity() === true) {
         // send
       }

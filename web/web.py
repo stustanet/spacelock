@@ -79,13 +79,13 @@ def logout():
 
 
 @app.route('/advanced', methods=['GET'])
-@login_required
+# @login_required
 def advanced():
     data = {
         'users': [
             {
                 'id': 1,
-                'description': 'jotweh',
+                'name': 'jotweh',
                 'valid_from': '2019-08-08 11:12:20',
                 'valid_to': '2019-08-08 11:12:20',
                 'token_validity_time': 60 * 60 * 24 * 3,
@@ -93,7 +93,7 @@ def advanced():
             },
             {
                 'id': 2,
-                'description': 'jj',
+                'name': 'jj',
                 'valid_from': '2019-08-08 11:12:20',
                 'valid_to': '2019-08-07 11:33:20',
                 'token_validity_time': 60 * 60 * 24 * 1,
@@ -108,7 +108,7 @@ def advanced():
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        token = gen_token(request.form.get('secret_key'))
+        token = gen_token(request.form.get('username'), request.form.get('secret_key'))
         if token is None:
             return render_template('error.html', error='DENIED!!!')
 

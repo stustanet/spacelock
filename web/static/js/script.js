@@ -34,12 +34,11 @@ function sendToken(token) {
       });
 }
 
-function openUserModal(description, from, to, validity_time, active) {
+function openUserModal(name, from, to, validity_time) {
   if (arguments.length === 0) {
     $('#input-secret-key').val('');
     $('#input-validity-time').val('');
-    $('#input-user-comment').val('');
-    $('#input-active').prop('checked', false);
+    $('#input-username').val('');
 
     $('#input-valid-from-date').val('');
     $('#input-valid-to-date').val('');
@@ -49,8 +48,7 @@ function openUserModal(description, from, to, validity_time, active) {
   } else {
     $('#input-secret-key').val('');
     $('#input-validity-time').val(validity_time);
-    $('#input-user-comment').val(description);
-    $('#input-active').prop('checked', active);
+    $('#input-username').val(name);
     const fromDate = new Date(from);
     const toDate = new Date(to);
 
@@ -62,4 +60,12 @@ function openUserModal(description, from, to, validity_time, active) {
   }
 
   $('#add-user-modal').modal();
+}
+
+function disableUser(name) {
+
+}
+
+function enableUser(name) {
+
 }
