@@ -25,6 +25,13 @@ exception
 	when duplicate_object then null;
 end $$;
 
+-- pgcrypto for randomness and hashing
+do $$ begin
+	create extension pgcrypto;
+exception
+	when duplicate_object then null;
+end $$;
+
 
 -- secret signing key, shared with the door chip
 create table if not exists signer (
