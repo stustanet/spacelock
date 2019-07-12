@@ -453,7 +453,7 @@ declare entry_id bigint;
 declare entry permissions%ROWTYPE;
 begin
 	select can_access(user_name, permission_key, 'usermod') into entry_id;
-	select * into entry from permissions where id = entry_id;
+	select * into entry from permissions where permissions.id = entry_id;
 
 	if entry is null then
 		return;
@@ -461,9 +461,14 @@ begin
 
 	return query
 		select
-			(id, name, granted_by, valid_from,
-			valid_to, token_validity_time, active,
-			usermod)
+			permissions.id,
+			permissions.name,
+			permissions.granted_by,
+			permissions.valid_from,
+			permissions.valid_to,
+			permissions.token_validity_time,
+			permissions.active,
+			permissions.usermod
 		from permissions;
 end;
 $$ language plpgsql
