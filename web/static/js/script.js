@@ -4,6 +4,7 @@ function sendToken(token) {
   const serviceUUID = '12345678-1234-5678-1234-56789abcdef0';
   const characteristicUUID = '12345678-1234-5678-1234-56789abcdef5';
   const options = {
+    acceptAllDevices: true,
     optionalServices: [
       serviceUUID
     ]
