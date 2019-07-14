@@ -75,8 +75,10 @@
                     <div class="d-flex justify-content-start">
                       <h5 class="mb-1">{{ user.name }}
                         {% if not user.active %} <span class="badge badge-pill badge-danger">
-                          inactive
-                      </span>
+                          inactive</span>
+                        {% endif %}
+                        {% if user.usermod %}
+                          <span class="badge badge-pill badge-success">admin</span>
                         {% endif %}
                       </h5>
                     </div>
