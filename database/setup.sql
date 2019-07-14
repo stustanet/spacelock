@@ -172,7 +172,7 @@ begin
 		signing_key,
 		extract(epoch from now_time),
 		token_duration,
-		0,    -- message type 0: open door
+		1,    -- message type 1: open door
 		entry.reqid
 	) into token;
 
