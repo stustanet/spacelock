@@ -34,6 +34,10 @@ function sendToken(token) {
     });
 }
 
+function prefixZero(num) {
+  return num < 10 ? "0" + num : num;
+}
+
 function openUserModal(req_id, name, from, to, validity_time, usermod) {
   const modal = $('#change-user-modal');
   modal.find('#input-req-id').val(req_id);
@@ -46,8 +50,8 @@ function openUserModal(req_id, name, from, to, validity_time, usermod) {
   document.getElementById('input-valid-from-date').valueAsDate = fromDate;
   document.getElementById('input-valid-to-date').valueAsDate = toDate;
 
-  modal.find('#input-valid-from-time').val(fromDate.getHours() + ':' + fromDate.getMinutes() + ':' + fromDate.getSeconds());
-  modal.find('#input-valid-to-time').val(toDate.getHours() + ':' + toDate.getMinutes() + ':' + toDate.getSeconds());
+  modal.find('#input-valid-from-time').val(prefixZero(fromDate.getHours()) + ':' + prefixZero(fromDate.getMinutes()) + ':' + prefixZero(fromDate.getSeconds()));
+  modal.find('#input-valid-to-time').val(prefixZero(toDate.getHours()) + ':' + prefixZero(toDate.getMinutes()) + ':' + prefixZero(toDate.getSeconds()));
 
   modal.modal();
 }
@@ -63,7 +67,8 @@ function openGrantAccessModal(req_id, from, to, validity_time) {
   document.getElementById('input-access-valid-from-date').valueAsDate = fromDate;
   document.getElementById('input-access-valid-to-date').valueAsDate = toDate;
 
-  modal.find('#input-access-valid-from-time').val(fromDate.getHours() + ':' + fromDate.getMinutes() + ':' + fromDate.getSeconds());
-  modal.find('#input-access-valid-to-time').val(toDate.getHours() + ':' + toDate.getMinutes() + ':' + toDate.getSeconds());
+  modal.find('#input-access-valid-from-time').val(prefixZero(fromDate.getHours()) + ':' + prefixZero(fromDate.getMinutes()) + ':' + prefixZero(fromDate.getSeconds()));
+  modal.find('#input-access-valid-to-time').val(prefixZero(toDate.getHours()) + ':' + prefixZero(toDate.getMinutes()) + ':' + prefixZero(toDate.getSeconds()));
+
   modal.modal();
 }

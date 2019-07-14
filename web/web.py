@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 
 from flask import Flask, render_template, request, redirect, url_for, flash
+from flask.views import View, MethodView
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from flask_qrcode import QRcode
 from flask_wtf import CSRFProtect
@@ -87,11 +88,11 @@ def logout():
 def access_request():
     data = {}
     if request.method == 'POST':
-        registration_code, key = add_user()
+        req_id, key = add_user()
 
-        data['code'] = registration_code
+        data['req_id'] = req_id
         data['key'] = key
-        data['grant_access_link'] = url_for('advanced', code=registration_code, _external=True)
+        data['grant_access_link'] = url_for('advanced', req_id=req_id, _external=True)
         data['is_request'] = True
     elif request.method == 'GET':
         data['is_request'] = False
@@ -118,10 +119,41 @@ def _get_user_list():
     }
 
 
-@app.route('/advanced', methods=['GET', 'POST'])
-@login_required
-def advanced():
-    if request.method == 'POST' and 'action' in request.args:
+class AdvancedView(MethodView):
+    decorators = [login_required]
+
+    def get_template_name(self):
+        return 'advanced.html'
+
+    def render_template(self):
+        return render_template(self.get_template_name(), **self.get_context())
+
+    def get_context(self):
+        users = list_users(current_user.key)
+        return {
+            'preselect': request.args.get('req_id'),
+            'users': [
+                {
+                    'id': user[0],
+                    'req_id': user[1],
+                    'name': user[2],
+                    'valid_from': user[4],
+                    'valid_to': user[5],
+                    'token_validity_time': user[6],
+                    'active': user[7],
+                    'usermod': user[8]
+                }
+                for user in users
+            ]
+        }
+
+    def get(self):
+        return self.render_template()
+
+    def post(self):
+        if 'action' not in request.args:
+            return self.render_template()
+
         if request.args.get('action') == 'enable_user':
             res = enable_user(current_user.key, request.form.get('req_id'))
 
@@ -138,7 +170,7 @@ def advanced():
                 date_pattern = '%Y-%m-%d'
             else:
                 flash('Unknown date format for valid_from/valid_to', category='danger')
-                return render_template('advanced.html', **_get_user_list())
+                return self.render_template()
 
             valid_from = datetime.strptime(
                 request.form.get('valid_from_date') + ' ' + request.form.get('valid_from_time'),
@@ -153,7 +185,7 @@ def advanced():
                               valid_to, request.form.get('token_validity_time'), usermod)[0]
             if res is None:
                 flash('Error changing user', category='danger')
-                return render_template('advanced.html', **_get_user_list())
+                return self.render_template()
 
         elif request.args.get('action') == 'grant_access':
             if re.match(r'^\d{2}/\d{2}/\d{4}$', request.form.get('valid_from_date')):
@@ -162,7 +194,7 @@ def advanced():
                 date_pattern = '%Y-%m-%d'
             else:
                 flash('Unknown date format for valid_from/valid_to', category='danger')
-                return render_template('advanced.html', **_get_user_list())
+                return self.render_template()
 
             valid_from = datetime.strptime(
                 request.form.get('valid_from_date') + ' ' + request.form.get('valid_from_time'),
@@ -176,16 +208,16 @@ def advanced():
 
             if res is None:
                 flash('Error granting access to user', category='danger')
-                return render_template('advanced.html', **_get_user_list())
+                return self.render_template()
         else:
             flash(f'Unknown action {request.args.get("action")}', category='danger')
-            return render_template('advanced.html', **_get_user_list())
+            return self.render_template()
 
         if res is None:
             flash('Error', category='danger')
-            return render_template('advanced.html', **_get_user_list())
+            return self.render_template()
 
-    return render_template('advanced.html', **_get_user_list())
+        return self.render_template()
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -203,3 +235,6 @@ def index():
         return render_template('access.html', **data)
     else:
         return render_template('index.html')
+
+
+app.add_url_rule('/advanced', view_func=AdvancedView.as_view('advanced'))

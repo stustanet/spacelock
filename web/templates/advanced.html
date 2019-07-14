@@ -7,7 +7,9 @@
       <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
       {% if messages %}
         {% for category, message in messages %}
-          <div class="alert alert-{% if category == 'message' %}danger{% else %}{{ category }}{% endif %} alert-dismissible" role="alert">
+          <div
+              class="alert alert-{% if category == 'message' %}danger{% else %}{{ category }}{% endif %} alert-dismissible"
+              role="alert">
             <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span
                 aria-hidden="true">&times;</span></button>
             {{ message }}
@@ -25,42 +27,44 @@
           <div class="card-body">
             <!-- List of access requests -->
             <ul class="list-group">
-              <div class="list-group-item list-group-item-info flex-column align-items-start">
+              <li class="list-group-item list-group-item-info flex-column align-items-start">
                 <div class="d-flex justify-content-between">
                   <h5>Access Requests</h5>
                   <div class="form-group">
                     <input id="input-search" type="text" class="form-control" placeholder="Search...">
                   </div>
                 </div>
-              </div>
-              {% for user in users if user.name == '' or user.name is none %}
-                <div class="list-group-item flex-column align-items-start access-request-item">
-                  <div class="d-flex w-100 justify-content-between">
-                    <div class="d-flex justify-content-start">
-                      <h6 class="user-req-id mb-1">{{ user.req_id }}</h6>
-                    </div>
-                    <div class="d-flex justify-content-end">
-                      {# Open grant access modal #}
-                      <button class="btn btn-sm btn-outline-primary mr-1"
-                              onclick="openGrantAccessModal('{{ user.req_id }}', '{{ user.valid_from }}', '{{ user.valid_to }}', '{{ user.token_validity_time }}')">
-                        Grant
-                      </button>
+              </li>
+              <div id="grant-access-list" style="max-height: 300px; overflow-y: auto;">
+                {% for user in users if user.name == '' or user.name is none %}
+                  <div class="list-group-item flex-column align-items-start access-request-item">
+                    <div class="d-flex w-100 justify-content-between">
+                      <div class="d-flex justify-content-start">
+                        <h6 class="user-req-id mb-1">{{ user.req_id }}</h6>
+                      </div>
+                      <div class="d-flex justify-content-end">
+                        {# Open grant access modal #}
+                        <button class="btn btn-sm btn-outline-primary mr-1"
+                                onclick="openGrantAccessModal('{{ user.req_id }}', '{{ user.valid_from }}', '{{ user.valid_to }}', '{{ user.token_validity_time }}')">
+                          Grant
+                        </button>
 
-{#                      <form action="{{ url_for('advanced', action='delete_user') }}" method="post">#}
-{#                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">#}
-{#                        <input type="hidden" name="req_id" value="{{ user.req_id }}">#}
-{#                        <button type="submit" class="btn btn-sm btn-outline-danger mr-1">#}
-{#                          Delete#}
-{#                        </button>#}
-{#                      </form>#}
+                        {#                      <form action="{{ url_for('advanced', action='delete_user') }}" method="post">#}
+                        {#                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">#}
+                        {#                        <input type="hidden" name="req_id" value="{{ user.req_id }}">#}
+                        {#                        <button type="submit" class="btn btn-sm btn-outline-danger mr-1">#}
+                        {#                          Delete#}
+                        {#                        </button>#}
+                        {#                      </form>#}
+                      </div>
+                    </div>
+                    <div class="d-flex w-100 justify-content-start">
+                      <small>{{ user.valid_from }} until {{ user.valid_to }}</small>
+                      <small class="pl-2">validity: {{ (user.token_validity_time / 60) |int }} minutes</small>
                     </div>
                   </div>
-                  <div class="d-flex w-100 justify-content-start">
-                    <small>{{ user.valid_from }} until {{ user.valid_to }}</small>
-                    <small class="pl-2">validity: {{ (user.token_validity_time / 60) |int }} minutes</small>
-                  </div>
-                </div>
-              {% endfor %}
+                {% endfor %}
+              </div>
             </ul>
             <hr>
             <!-- List of registered users -->
@@ -102,13 +106,13 @@
                         Change
                       </button>
 
-{#                      <form action="{{ url_for('advanced', action='delete_user') }}" method="post">#}
-{#                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">#}
-{#                        <input type="hidden" name="req_id" value="{{ user.req_id }}">#}
-{#                        <button type="submit" class="btn btn-sm btn-outline-danger mr-1">#}
-{#                          Delete#}
-{#                        </button>#}
-{#                      </form>#}
+                      {#                      <form action="{{ url_for('advanced', action='delete_user') }}" method="post">#}
+                      {#                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">#}
+                      {#                        <input type="hidden" name="req_id" value="{{ user.req_id }}">#}
+                      {#                        <button type="submit" class="btn btn-sm btn-outline-danger mr-1">#}
+                      {#                          Delete#}
+                      {#                        </button>#}
+                      {#                      </form>#}
                     </div>
                   </div>
                   <div class="d-flex w-100 justify-content-start">
@@ -225,7 +229,7 @@
     </div>
   </div>
 
-  <!-- Gran Access Modal -->
+  <!-- Grant Access Modal -->
   <div class="modal fade" id="grant-access-modal" tabindex="-1" role="dialog" aria-labelledby="Grant Access"
        aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -245,7 +249,8 @@
               <div class="form-group">
                 <label for="input-req-id">Registration id</label>
                 <input type="text" class="form-control" id="input-req-id" name='req_id'
-                       placeholder="Registration id" required readonly>
+                       placeholder="Registration id" required readonly
+                       {% if preselect %}value="{{ preselect }}"{% endif %}>
               </div>
               <div class="form-group">
                 <label for="input-username">Username</label>
@@ -350,5 +355,8 @@
         });
       });
     })();
+    {% if preselect %}
+      $("#grant-access-modal").modal();
+    {% endif %}
   </script>
 {% endblock %}
