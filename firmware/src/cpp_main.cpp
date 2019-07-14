@@ -18,7 +18,7 @@ static void open_door(StepperMotor &motor);
 static void open_door(StepperMotor &motor) {
     motor.set_mode(1);
     // TODO: find the correct number which does a full rotation
-    motor.rotate(2000000, 1000000 * 4);
+    motor.rotate(3000000, 1000000 * 4);
     sleep_us(3000000);
     motor.set_mode(-1);
     // TODO: find the correct number which does a quarter or so backrotation

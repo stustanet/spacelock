@@ -85,10 +85,10 @@ static void dcf77_update() {
         //  0.07s - 0.13s: bit 0
         //  0.17s - 0.23s: bit 1
 
-        if ((time_delta >= 70000) && (time_delta <= 150000)) {
+        if ((time_delta >= 30000) && (time_delta <= 135000)) {
             // We have received a "0" bit.
             rx_bits[rx_bitcount++] = 0;
-        } else if ((time_delta >= 170000) && (time_delta <= 260000)) {
+        } else if ((time_delta >= 140000) && (time_delta <= 260000)) {
             // We have received a "1" bit.
             rx_bits[rx_bitcount++] = 1;
         } else {
