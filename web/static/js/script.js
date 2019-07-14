@@ -13,59 +13,57 @@ function sendToken(token) {
   };
 
   navigator.bluetooth.requestDevice(options)
-      .then(device => {
-        console.log('> Name:             ' + device.name);
-        console.log('> Id:               ' + device.id);
-        console.log('> Connected:        ' + device.gatt.connected);
-        return device.gatt.connect();
-      })
-      .then(server => server.getPrimaryService(serviceUUID))
-      .then(service => service.getCharacteristic(characteristicUUID))
-      .then(characteristic => {
-        const t = Uint8Array.from(token, c => c.charCodeAt(0));
-        return characteristic.writeValue(t);
-      })
-      .then(_ => {
-        alert('Successfully sent token!');
-      })
-      .catch(error => {
-        alert('Something went wrong:\n' + error);
-        console.log('Argh! ' + error);
-      });
+    .then(device => {
+      console.log('> Name:             ' + device.name);
+      console.log('> Id:               ' + device.id);
+      console.log('> Connected:        ' + device.gatt.connected);
+      return device.gatt.connect();
+    })
+    .then(server => server.getPrimaryService(serviceUUID))
+    .then(service => service.getCharacteristic(characteristicUUID))
+    .then(characteristic => {
+      const t = Uint8Array.from(token, c => c.charCodeAt(0));
+      return characteristic.writeValue(t);
+    })
+    .then(_ => {
+      alert('Successfully sent token!');
+    })
+    .catch(error => {
+      alert('Something went wrong:\n' + error);
+      console.log('Argh! ' + error);
+    });
 }
 
-function openUserModal(name, from, to, validity_time) {
-  if (arguments.length === 0) {
-    $('#input-secret-key').val('');
-    $('#input-validity-time').val('');
-    $('#input-username').val('');
+function openUserModal(req_id, name, from, to, validity_time, usermod) {
+  const modal = $('#change-user-modal');
+  modal.find('#input-req-id').val(req_id);
+  modal.find('#input-validity-time').val(validity_time);
+  modal.find('#input-username').val(name);
+  modal.find('#input-usermod').prop('checked', usermod === 'True');
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
 
-    $('#input-valid-from-date').val('');
-    $('#input-valid-to-date').val('');
+  document.getElementById('input-valid-from-date').valueAsDate = fromDate;
+  document.getElementById('input-valid-to-date').valueAsDate = toDate;
 
-    $('#input-valid-from-time').val('');
-    $('#input-valid-to-time').val('');
-  } else {
-    $('#input-secret-key').val('');
-    $('#input-validity-time').val(validity_time);
-    $('#input-username').val(name);
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
+  modal.find('#input-valid-from-time').val(fromDate.getHours() + ':' + fromDate.getMinutes() + ':' + fromDate.getSeconds());
+  modal.find('#input-valid-to-time').val(toDate.getHours() + ':' + toDate.getMinutes() + ':' + toDate.getSeconds());
 
-    document.getElementById('input-valid-from-date').valueAsDate = fromDate;
-    document.getElementById('input-valid-to-date').valueAsDate = toDate;
-
-    $('#input-valid-from-time').val(fromDate.getHours() + ':' + fromDate.getMinutes() + ':' + fromDate.getSeconds());
-    $('#input-valid-to-time').val(toDate.getHours() + ':' + toDate.getMinutes() + ':' + toDate.getSeconds());
-  }
-
-  $('#add-user-modal').modal();
+  modal.modal();
 }
 
-function disableUser(name) {
+function openGrantAccessModal(req_id, from, to, validity_time) {
+  const modal = $('#grant-access-modal');
+  modal.find('#input-req-id').val(req_id);
 
-}
+  modal.find('#input-validity-time').val(validity_time);
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
 
-function enableUser(name) {
+  document.getElementById('input-access-valid-from-date').valueAsDate = fromDate;
+  document.getElementById('input-access-valid-to-date').valueAsDate = toDate;
 
+  modal.find('#input-access-valid-from-time').val(fromDate.getHours() + ':' + fromDate.getMinutes() + ':' + fromDate.getSeconds());
+  modal.find('#input-access-valid-to-time').val(toDate.getHours() + ':' + toDate.getMinutes() + ':' + toDate.getSeconds());
+  modal.modal();
 }

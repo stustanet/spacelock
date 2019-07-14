@@ -7,11 +7,8 @@
     </div>
     <div class="card-body">
       <form action="/" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="card-text">
-          <div class="form-group">
-            <label for="input-username">Username</label>
-            <input type="text" class="form-control" id="input-username" name='username' placeholder="Username">
-          </div>
           <div class="form-group">
             <label for="input-key">Password</label>
             <input type="password" class="form-control" id="input-key" name='secret_key' placeholder="Password">

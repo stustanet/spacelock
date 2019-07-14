@@ -11,6 +11,9 @@
           <img src="{{ qrcode(token) }}" alt="{{ token }}">
         </div>
         <div class="pt-3 text-center">
+          <a href="{{ token_url }}">Send directly via WIFI</a>
+        </div>
+        <div class="pt-3 text-center">
           <button class="btn btn-lg btn-primary" onclick="sendToken('{{ token }}')">Bluetooth</button>
         </div>
       </div>

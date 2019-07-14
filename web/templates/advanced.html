@@ -3,6 +3,19 @@
 
 {% block body %}
   <div class="container pt-3">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{% if category == 'message' %}danger{% else %}{{ category }}{% endif %} alert-dismissible" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span
+                aria-hidden="true">&times;</span></button>
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
     <div class="row justify-content-center">
       <div class="col-sm-12 col-md-8 col-lg-8">
         <div class="card">
@@ -10,46 +23,110 @@
             User Management
           </div>
           <div class="card-body">
+            <!-- List of access requests -->
             <ul class="list-group">
-              {% for user in users %}
-                <div class="list-group-item {% if not user.active %}disabled{% endif %} flex-column align-items-start">
+              <div class="list-group-item list-group-item-info flex-column align-items-start">
+                <div class="d-flex justify-content-between">
+                  <h5>Access Requests</h5>
+                  <div class="form-group">
+                    <input id="input-search" type="text" class="form-control" placeholder="Search...">
+                  </div>
+                </div>
+              </div>
+              {% for user in users if user.name == '' or user.name is none %}
+                <div class="list-group-item flex-column align-items-start access-request-item">
                   <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">{{ user.name }}</h5>
-                    {% if user.active %}
-                      <button class="btn btn-sm btn-outline-danger" onclick="disableUser('{{ user.name }}')">
-                        Disable
+                    <div class="d-flex justify-content-start">
+                      <h6 class="user-req-id mb-1">{{ user.req_id }}</h6>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                      {# Open grant access modal #}
+                      <button class="btn btn-sm btn-outline-primary mr-1"
+                              onclick="openGrantAccessModal('{{ user.req_id }}', '{{ user.valid_from }}', '{{ user.valid_to }}', '{{ user.token_validity_time }}')">
+                        Grant
                       </button>
-                    {% else %}
-                      <button class="btn btn-sm btn-outline-success" onclick="enableUser('{{ user.name }}')">
-                        Enable
-                      </button>
-                    {% endif %}
-                    <button class="btn btn-sm btn-outline-primary"
-                            onclick="openUserModal('{{ user.name }}', '{{ user.valid_from }}', '{{ user.valid_to }}', {{ user.token_validity_time }})">
-                      Change
-                    </button>
+
+{#                      <form action="{{ url_for('advanced', action='delete_user') }}" method="post">#}
+{#                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">#}
+{#                        <input type="hidden" name="req_id" value="{{ user.req_id }}">#}
+{#                        <button type="submit" class="btn btn-sm btn-outline-danger mr-1">#}
+{#                          Delete#}
+{#                        </button>#}
+{#                      </form>#}
+                    </div>
                   </div>
                   <div class="d-flex w-100 justify-content-start">
                     <small>{{ user.valid_from }} until {{ user.valid_to }}</small>
-                    <small class="pl-2">validity: {{ user.token_validity_time }}</small>
+                    <small class="pl-2">validity: {{ (user.token_validity_time / 60) |int }} minutes</small>
                   </div>
                 </div>
               {% endfor %}
             </ul>
             <hr>
-            <div class="d-flex justify-content-center">
-              <button type="button" class="btn btn-outline-primary" onclick="openUserModal()">
-                Add
-              </button>
-            </div>
+            <!-- List of registered users -->
+            <ul class="list-group">
+              {% for user in users if user.name is not none and user.name != '' %}
+                <div class="list-group-item flex-column align-items-start">
+                  <div class="d-flex w-100 justify-content-between">
+                    <div class="d-flex justify-content-start">
+                      <h5 class="mb-1">{{ user.name }}
+                        {% if not user.active %} <span class="badge badge-pill badge-danger">
+                          inactive
+                      </span>
+                        {% endif %}
+                      </h5>
+                    </div>
+                    <div class="d-flex justify-content-end">
+
+                      {# User actions #}
+                      {% if user.active %}
+                        <form action="{{ url_for('advanced', action='disable_user') }}" method="post">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <input type="hidden" name="req_id" value="{{ user.req_id }}">
+                          <button type="submit" class="btn btn-sm btn-outline-danger mr-1">
+                            Disable
+                          </button>
+                        </form>
+                      {% else %}
+                        <form action="{{ url_for('advanced', action='enable_user') }}" method="post">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <input type="hidden" name="req_id" value="{{ user.req_id }}">
+                          <button type="submit" class="btn btn-sm btn-outline-success mr-1">
+                            Enable
+                          </button>
+                        </form>
+                      {% endif %}
+                      {# Open user change modal #}
+                      <button class="btn btn-sm btn-outline-primary mr-1"
+                              onclick="openUserModal('{{ user.req_id }}', '{{ user.name }}', '{{ user.valid_from }}', '{{ user.valid_to }}', {{ user.token_validity_time }}, '{{ user.usermod }}')">
+                        Change
+                      </button>
+
+{#                      <form action="{{ url_for('advanced', action='delete_user') }}" method="post">#}
+{#                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">#}
+{#                        <input type="hidden" name="req_id" value="{{ user.req_id }}">#}
+{#                        <button type="submit" class="btn btn-sm btn-outline-danger mr-1">#}
+{#                          Delete#}
+{#                        </button>#}
+{#                      </form>#}
+                    </div>
+                  </div>
+                  <div class="d-flex w-100 justify-content-start">
+                    <small>{{ user.valid_from }} until {{ user.valid_to }}</small>
+                    <small class="pl-2">validity: {{ (user.token_validity_time / 60) |int }} minutes</small>
+                  </div>
+                </div>
+              {% endfor %}
+            </ul>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal -->
-  <div class="modal fade" id="add-user-modal" tabindex="-1" role="dialog" aria-labelledby="Add User" aria-hidden="true">
+  <!-- User Change Modal -->
+  <div class="modal fade" id="change-user-modal" tabindex="-1" role="dialog" aria-labelledby="Add User"
+       aria-hidden="true">
     <div class="modal-dialog" role="document">
       <div class="modal-content">
         <div class="modal-header">
@@ -58,13 +135,21 @@
             <span aria-hidden="true">&times;</span>
           </button>
         </div>
-        <div class="modal-body">
-          <form id="user-change-form" class="needs-validation" novalidate>
+        <form action="{{ url_for('advanced', action='modify_user') }}" method="post" id="user-change-form"
+              class="needs-validation"
+              novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="modal-body">
             <div class="card-text">
+              <div class="form-group">
+                <label for="input-req-id">Registration id</label>
+                <input type="text" class="form-control" id="input-req-id" name='req_id'
+                       placeholder="Registration id" required readonly>
+              </div>
               <div class="form-group">
                 <label for="input-username">Username</label>
                 <input type="text" class="form-control" id="input-username" name='username'
-                       placeholder="Username" required disabled>
+                       placeholder="Username" required readonly>
                 <div class="invalid-feedback">
                   Username is required
                 </div>
@@ -74,16 +159,20 @@
               </div>
               <div class="form-row">
                 <div class="col-6 mb-3">
-                  <input type="date" class="form-control" id="input-valid-from-date" name='valid_from_date' required>
-
-                  <div class="invalid-feedback">
-                    Date is required
+                  <div class="form-group">
+                    <input type="date" class="form-control" id="input-valid-from-date" name='valid_from_date' required>
+                    <div class="invalid-feedback">
+                      Date is required
+                    </div>
                   </div>
                 </div>
                 <div class="col-6 mb-3">
-                  <input type="time" class="form-control" id="input-valid-from-time" name='valid_from_time' required>
-                  <div class="invalid-feedback">
-                    Time is required
+                  <div class="form-group">
+                    <input type="text" pattern="^\d{1,2}:\d{2}:\d{2}$" class="form-control" id="input-valid-from-time"
+                           name='valid_from_time' placeholder="HH:MM:SS" required>
+                    <div class="invalid-feedback">
+                      Time is required and needs a proper format
+                    </div>
                   </div>
                 </div>
               </div>
@@ -92,15 +181,20 @@
               </div>
               <div class="form-row">
                 <div class="col-6 mb-3">
-                  <input type="date" class="form-control" id="input-valid-to-date" name='valid_to_date' required>
-                  <div class="invalid-feedback">
-                    Date is required
+                  <div class="form-group">
+                    <input type="date" class="form-control" id="input-valid-to-date" name='valid_to_date' required>
+                    <div class="invalid-feedback">
+                      Date is required
+                    </div>
                   </div>
                 </div>
                 <div class="col-6 mb-3">
-                  <input type="time" class="form-control" id="input-valid-to-time" name='valid_to_time' required>
-                  <div class="invalid-feedback">
-                    Time is required
+                  <div class="form-group">
+                    <input type="text" pattern="^\d{1,2}:\d{2}:\d{2}$" class="form-control" id="input-valid-to-time"
+                           name='valid_to_time' placeholder="HH:MM:SS" required>
+                    <div class="invalid-feedback">
+                      Time is required and needs a proper format
+                    </div>
                   </div>
                 </div>
               </div>
@@ -109,14 +203,122 @@
                 <label for="input-validity-time">Token valid for</label>
                 <input type="number" class="form-control" id="input-validity-time" name='token_validity_time'
                        placeholder="duration in min" required>
+                <div class="invalid-feedback">
+                  Validity time is required
+                </div>
+              </div>
+
+              <div class="form-group form-check custom-checkbox">
+                <label class="form-check-label" for="input-usermod">
+                  <input class="form-check-input" type="checkbox" id="input-usermod" name="usermod">
+                  Admin
+                </label>
               </div>
             </div>
-          </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-outline-success">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gran Access Modal -->
+  <div class="modal fade" id="grant-access-modal" tabindex="-1" role="dialog" aria-labelledby="Grant Access"
+       aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="add-user-modal-title">Grant Access</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-outline-success" onclick="validate()">Save</button>
-        </div>
+        <form action="{{ url_for('advanced', action='grant_access') }}" method="post" id="grant-access-form"
+              class="needs-validation"
+              novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="modal-body">
+            <div class="card-text">
+              <div class="form-group">
+                <label for="input-req-id">Registration id</label>
+                <input type="text" class="form-control" id="input-req-id" name='req_id'
+                       placeholder="Registration id" required readonly>
+              </div>
+              <div class="form-group">
+                <label for="input-username">Username</label>
+                <input type="text" class="form-control" id="input-username" name='username'
+                       placeholder="Username" required>
+                <div class="invalid-feedback">
+                  Username is required
+                </div>
+              </div>
+              <div class="form-row">
+                <label for="input-access-valid-from-date">From</label>
+              </div>
+              <div class="form-row">
+                <div class="col-6 mb-3">
+                  <div class="form-group">
+                    <input type="date" class="form-control" id="input-access-valid-from-date" name='valid_from_date'
+                           required>
+                    <div class="invalid-feedback">
+                      Date is required
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6 mb-3">
+                  <div class="form-group">
+                    <input type="text" pattern="^\d{1,2}:\d{2}:\d{2}$" class="form-control"
+                           id="input-access-valid-from-time"
+                           name='valid_from_time' placeholder="HH:MM:SS" required>
+                    <div class="invalid-feedback">
+                      Time is required and needs a proper format
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-row">
+                <label for="input-access-valid-to-date">To</label>
+              </div>
+              <div class="form-row">
+                <div class="col-6 mb-3">
+                  <div class="form-group">
+                    <input type="date" class="form-control" id="input-access-valid-to-date" name='valid_to_date'
+                           required>
+                    <div class="invalid-feedback">
+                      Date is required
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6 mb-3">
+                  <div class="form-group">
+                    <input type="text" pattern="^\d{1,2}:\d{2}:\d{2}$" class="form-control"
+                           id="input-access-valid-to-time"
+                           name='valid_to_time' placeholder="HH:MM:SS" required>
+                    <div class="invalid-feedback">
+                      Time is required and needs a proper format
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="input-validity-time">Token valid for</label>
+                <input type="number" class="form-control" id="input-validity-time" name='token_validity_time'
+                       placeholder="duration in min" required>
+                <div class="invalid-feedback">
+                  Validity time is required
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-outline-success">Save</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -124,15 +326,29 @@
 
 {% block scripts %}
   <script type="text/javascript">
-    // Example starter JavaScript for disabling form submissions if there are invalid fields
-    function validate() {
-      const form = document.getElementById('user-change-form');
-      if (form.checkValidity() === true) {
-        // send
-      }
-      form.classList.add('was-validated');
-    }
+    (function () {
+      'use strict';
+      window.addEventListener('load', function () {
+        // Fetch all the forms we want to apply custom Bootstrap validation styles to
+        const forms = document.getElementsByClassName('needs-validation');
+        // Loop over them and prevent submission
+        const validation = Array.prototype.filter.call(forms, function (form) {
+          form.addEventListener('submit', function (event) {
+            if (form.checkValidity() === false) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+          }, false);
+        });
+      }, false);
 
+      $("#input-search").on("keyup", function () {
+        const value = $(this).val().toLowerCase();
+        $(".access-request-item").filter(function () {
+          $(this).toggle($(this).find('.user-req-id').text().toLowerCase().indexOf(value) > -1)
+        });
+      });
+    })();
   </script>
-
 {% endblock %}

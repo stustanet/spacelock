@@ -1,7 +1,17 @@
-{% set navigation_bar = [
+{% if not current_user.is_authenticated %}
+  {% set navigation_bar = [
     ('/', 'index', 'Spacelock'),
+    ('/access-request', 'access-request', 'Request Access'),
     ('/advanced', 'advanced', 'Advanced')
-] -%}
+  ] -%}
+{% else %}
+  {% set navigation_bar = [
+    ('/', 'index', 'Spacelock'),
+    ('/access-request', 'access-request', 'Request Access'),
+    ('/advanced', 'advanced', 'Advanced'),
+    ('logout', 'logout', 'Logout')
+  ] -%}
+{% endif %}
 
 {% set active_page = active_page|default('index') -%}
 
@@ -17,16 +27,36 @@
   <a class="navbar-brand" href="/">
     <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo">
   </a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+          aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
 
-  <div class="navbar-nav">
-    {% for href, id, caption in navigation_bar %}
-      <a class="nav-item nav-link{% if id == active_page %} active{% endif %}" href="{{ href|e }}">
-        {{ caption|e }}{% if id == active_page %} <span class="sr-only">(current)</span>{% endif %}</a>
-    {% endfor %}
+  <div class="collapse navbar-collapse" id="navbarSupportedContent" style="flex-grow: 0 !important;">
+    <div class="navbar-nav">
+      {% for href, id, caption in navigation_bar %}
+        <a class="nav-item nav-link{% if id == active_page %} active{% endif %}" href="{{ href|e }}">
+          {{ caption|e }}{% if id == active_page %} <span class="sr-only">(current)</span>{% endif %}</a>
+      {% endfor %}
+    </div>
   </div>
 </nav>
 {% block body %}
   <div class="container pt-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
+      {% if messages %}
+        {% for category, message in messages %}
+          <div
+              class="alert alert-{% if category == 'message' %}danger{% else %}{{ category }}{% endif %} alert-dismissible"
+              role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span
+                aria-hidden="true">&times;</span></button>
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
     <div class="row justify-content-center pb-3">
       <h1>Spacelock</h1>
     </div>
@@ -42,6 +72,17 @@
 <script type="application/javascript" src="{{ url_for('static', filename='jquery/jquery.min.js') }}"></script>
 <script type="application/javascript" src="{{ url_for('static', filename='bootstrap/js/bootstrap.min.js') }}"></script>
 <script type="application/javascript" src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script type="text/javascript">
+  const csrf_token = "{{ csrf_token() }}";
+
+  $.ajaxSetup({
+    beforeSend: function (xhr, settings) {
+      if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+        xhr.setRequestHeader("X-CSRFToken", csrf_token);
+      }
+    }
+  });
+</script>
 {% block scripts %}
 {% endblock %}
 </body>

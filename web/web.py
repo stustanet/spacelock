@@ -1,18 +1,23 @@
 import json
 import os
+import re
+from datetime import datetime
 
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from flask_qrcode import QRcode
+from flask_wtf import CSRFProtect
 
 from authentication import User
-from db import gen_token
+from db import gen_token, modify_user, add_user, enable_user, disable_user, list_users, grant_access, del_user
 
+WIFI_SEND_URL = 'http://' + os.environ['LOCK_WIFI_IP'] + '/send/'
 
 app = Flask(__name__)
 app.secret_key = os.environ['FLASK_SECRET_KEY']
 
 QRcode(app)
+csrf = CSRFProtect(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -62,7 +67,7 @@ def login():
         return redirect(url_for('advanced'))
 
     if request.method == 'POST':
-        user = User(0)  # User.login(key=request.form.get('secret_key')).first()
+        user = User.login(key=request.form.get('secret_key'))
         if user is None:
             flash('Invalid username or password')
             return redirect(url_for('login'))
@@ -78,40 +83,123 @@ def logout():
     return redirect(url_for('index'))
 
 
-@app.route('/advanced', methods=['GET'])
-# @login_required
-def advanced():
-    data = {
+@app.route('/access-request', methods=['GET', 'POST'])
+def access_request():
+    data = {}
+    if request.method == 'POST':
+        registration_code, key = add_user()
+
+        data['code'] = registration_code
+        data['key'] = key
+        data['grant_access_link'] = url_for('advanced', code=registration_code, _external=True)
+        data['is_request'] = True
+    elif request.method == 'GET':
+        data['is_request'] = False
+
+    return render_template('access_request.html', **data)
+
+
+def _get_user_list():
+    users = list_users(current_user.key)
+    return {
         'users': [
             {
-                'id': 1,
-                'name': 'jotweh',
-                'valid_from': '2019-08-08 11:12:20',
-                'valid_to': '2019-08-08 11:12:20',
-                'token_validity_time': 60 * 60 * 24 * 3,
-                'active': True
-            },
-            {
-                'id': 2,
-                'name': 'jj',
-                'valid_from': '2019-08-08 11:12:20',
-                'valid_to': '2019-08-07 11:33:20',
-                'token_validity_time': 60 * 60 * 24 * 1,
-                'active': False
+                'id': user[0],
+                'req_id': user[1],
+                'name': user[2],
+                'valid_from': user[4],
+                'valid_to': user[5],
+                'token_validity_time': user[6],
+                'active': user[7],
+                'usermod': user[8]
             }
+            for user in users
         ]
     }
 
-    return render_template('advanced.html', **data)
+
+@app.route('/advanced', methods=['GET', 'POST'])
+@login_required
+def advanced():
+    if request.method == 'POST' and 'action' in request.args:
+        if request.args.get('action') == 'enable_user':
+            res = enable_user(current_user.key, request.form.get('req_id'))
+
+        elif request.args.get('action') == 'disable_user':
+            res = disable_user(current_user.key, request.form.get('req_id'))
+
+        elif request.args.get('action') == 'delete_user':
+            res = del_user(current_user.key, request.form.get('req_id'))
+
+        elif request.args.get('action') == 'modify_user':
+            if re.match(r'^\d{2}/\d{2}/\d{4}$', request.form.get('valid_from_date')):
+                date_pattern = '%m/%d/%Y'
+            elif re.match(r'^\d{4}-\d{2}-\d{2}$', request.form.get('valid_from_date')):
+                date_pattern = '%Y-%m-%d'
+            else:
+                flash('Unknown date format for valid_from/valid_to', category='danger')
+                return render_template('advanced.html', **_get_user_list())
+
+            valid_from = datetime.strptime(
+                request.form.get('valid_from_date') + ' ' + request.form.get('valid_from_time'),
+                f'{date_pattern} %H:%M:%S')
+            valid_to = datetime.strptime(
+                request.form.get('valid_to_date') + ' ' + request.form.get('valid_to_time'),
+                f'{date_pattern} %H:%M:%S')
+
+            usermod = request.form.get('usermod') == 'on'
+
+            res = modify_user(current_user.key, request.form.get('req_id'), request.form.get('username'), valid_from,
+                              valid_to, request.form.get('token_validity_time'), usermod)[0]
+            if res is None:
+                flash('Error changing user', category='danger')
+                return render_template('advanced.html', **_get_user_list())
+
+        elif request.args.get('action') == 'grant_access':
+            if re.match(r'^\d{2}/\d{2}/\d{4}$', request.form.get('valid_from_date')):
+                date_pattern = '%m/%d/%Y'
+            elif re.match(r'^\d{4}-\d{2}-\d{2}$', request.form.get('valid_from_date')):
+                date_pattern = '%Y-%m-%d'
+            else:
+                flash('Unknown date format for valid_from/valid_to', category='danger')
+                return render_template('advanced.html', **_get_user_list())
+
+            valid_from = datetime.strptime(
+                request.form.get('valid_from_date') + ' ' + request.form.get('valid_from_time'),
+                f'{date_pattern} %H:%M:%S')
+            valid_to = datetime.strptime(
+                request.form.get('valid_to_date') + ' ' + request.form.get('valid_to_time'),
+                f'{date_pattern} %H:%M:%S')
+
+            res = grant_access(current_user.key, request.form.get('req_id'), request.form.get('username'), valid_from,
+                               valid_to, request.form.get('token_validity_time'))[0]
+
+            if res is None:
+                flash('Error granting access to user', category='danger')
+                return render_template('advanced.html', **_get_user_list())
+        else:
+            flash(f'Unknown action {request.args.get("action")}', category='danger')
+            return render_template('advanced.html', **_get_user_list())
+
+        if res is None:
+            flash('Error', category='danger')
+            return render_template('advanced.html', **_get_user_list())
+
+    return render_template('advanced.html', **_get_user_list())
 
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        token = gen_token(request.form.get('username'), request.form.get('secret_key'))
+        token = gen_token(request.form.get('secret_key'))
         if token is None:
             return render_template('error.html', error='DENIED!!!')
 
-        return render_template('access.html', token=token)
+        data = {
+            'token': token,
+            'token_url': WIFI_SEND_URL + token
+        }
+
+        return render_template('access.html', **data)
     else:
         return render_template('index.html')

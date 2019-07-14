@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% set active_page = "access-request" %}
+
+{% block content %}
+  <div class="card">
+    {% if is_request %}
+      <div class="card-header bg-success text-white">
+        <h5 class="card-title">Access Request Sent</h5>
+      </div>
+      <div class="card-body">
+        <div class="card-text">
+          <form>
+            <div class="card-text">
+              <p>
+                Den Registrations-Link einem Vorstand mit Bitte um Freischaltung für den
+                Hackerspace übermitteln. Danach kannst du dich mit dem unten angezeigten Key <a href="/">hier</a>
+                anmelden um ein Token zu generieren. Mit diesem kannst du dann den Hackerspace öffnen.
+
+                Alternativ kannst du auch den Registration Code einem Vorstand über analoge Wege (z.B. Telefon) zukommen
+                lassen.
+              </p>
+              <div class="form-group">
+                <label for="input-link">Registration Link</label>
+                <input type="text" class="form-control" id="input-link" name="link" value="{{ grant_access_link }}" readonly>
+              </div>
+              <div class="form-group">
+                <label for="input-code">Registration Code</label>
+                <input type="text" class="form-control" id="input-code" name="code" value="{{ code }}" readonly>
+              </div>
+              <div class="form-group">
+                <label for="input-key">Key</label>
+                <input type="text" class="form-control" id="input-key" name="key" value="{{ key }}" readonly>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    {% else %}
+      <div class="card-header bg-info text-white">
+        <h5 class="card-title">Request Access</h5>
+      </div>
+      <div class="card-body">
+        <div class="card-text">
+          <form action="/access-request" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="d-flex justify-content-center">
+              <button type="submit" class="btn btn-primary">Yes, I want in!</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
