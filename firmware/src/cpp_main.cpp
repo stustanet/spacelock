@@ -10,8 +10,6 @@
 #include "sha256.h"
 #include "time.h"
 
-#define WITH_BACKDOOR 1
-
 static void cpp_main_in_cpp();
 static void open_door(StepperMotor &motor);
 
