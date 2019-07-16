@@ -56,6 +56,7 @@ Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash_ex.c \
 system_stm32f1xx.c
 
 CPP_SOURCES = \
+beeper.cpp \
 cpp_main.cpp \
 dcf77.cpp \
 dcf77_analyze.cpp \

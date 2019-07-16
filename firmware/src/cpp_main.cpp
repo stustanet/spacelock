@@ -6,6 +6,7 @@
 #include "hardware.h"
 #include "hmac.h"
 #include "motor.h"
+#include "beeper.h"
 #include "secret_key.h"
 #include "sha256.h"
 #include "time.h"
@@ -55,6 +56,8 @@ static void cpp_main_in_cpp() {
         InputPin(GPIOB, GPIO_PIN_6)            // counterclockwise end switch
     );
 
+    Beeper beeper(OutputPin(GPIOA, GPIO_PIN_3));
+
     OutputPin led0_b(GPIOA, GPIO_PIN_0);
     OutputPin led0_g(GPIOA, GPIO_PIN_1);
     OutputPin led0_r(GPIOA, GPIO_PIN_2);
@@ -80,6 +83,7 @@ static void cpp_main_in_cpp() {
         }
         if (message->buf_pos == 0) {
             // the received message is empty
+            beeper.error(1);
             continue;
         }
 
@@ -97,6 +101,11 @@ static void cpp_main_in_cpp() {
             // nothing to see here
 #if WITH_BACKDOOR
             uart_writeline("you used the \x1b[32;1;5msuper-secret\x1b[m backdoor!");
+#else
+            uart_writeline("lol noob");
+#endif
+            beeper.party(10);
+#if WITH_BACKDOOR
             open_door(motor);
 #endif
             continue;
@@ -107,6 +116,7 @@ static void cpp_main_in_cpp() {
         if (size == 0) {
             // the base64-decoded message is empty
             uart_writeline("base64-decoded message is empty");
+            beeper.error(2);
             continue;
         }
 
@@ -120,6 +130,7 @@ static void cpp_main_in_cpp() {
         if (size <= HMAC_SIZE + 17) {
             // the message is too small
             uart_writeline("message is too small");
+            beeper.error(3);
             continue;
         }
 
@@ -134,6 +145,7 @@ static void cpp_main_in_cpp() {
         }
         if (!signature_ok) {
             uart_writeline("HMAC fail");
+            beeper.error(4);
             continue;
         }
 
@@ -146,11 +158,13 @@ static void cpp_main_in_cpp() {
         if (valid_from > current_timestamp) {
             // message is not yet valid
             uart_writeline("message is not yet valid");
+            beeper.error(5);
             continue;
         }
         if (valid_until < current_timestamp) {
             // mesage is no longer valid
             uart_writeline("message is no longer valid");
+            beeper.error(6);
             continue;
         }
 
@@ -168,11 +182,13 @@ static void cpp_main_in_cpp() {
             if (!check_info(payload, payload_size)) {
                 // info is not valid
                 uart_writeline("message info is not valid");
+                beeper.error(7);
                 continue;
             }
 
             // it seems like you're in luck.
             uart_writeline("opening door");
+            beeper.good(10000);
             open_door(motor);
             break;
         }
@@ -182,6 +198,7 @@ static void cpp_main_in_cpp() {
             //    uint8_t *    new_key_seed            (variable length)
 
             if (payload_size < 1) {
+                beeper.error(7);
                 uart_writeline("payload is not valid");
                 continue;
             }
@@ -197,12 +214,14 @@ static void cpp_main_in_cpp() {
 
             // write the new secret key
             secret_key_write(digest);
+            beeper.good(1000000);
 
             break;
         }
         default: {
             // unknown message type
             uart_writeline("unknown message type");
+            beeper.error(8);
             continue;
 
             break;

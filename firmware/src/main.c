@@ -214,6 +214,7 @@ static void MX_GPIO_Init(void)
     GPIO_PIN_0 |
     GPIO_PIN_1 |
     GPIO_PIN_2 |
+    GPIO_PIN_3 |
     GPIO_PIN_4 |
     GPIO_PIN_5 |
     GPIO_PIN_6,
@@ -256,6 +257,7 @@ static void MX_GPIO_Init(void)
     GPIO_PIN_0 |
     GPIO_PIN_1 |
     GPIO_PIN_2 |
+    GPIO_PIN_3 |
     GPIO_PIN_4 |
     GPIO_PIN_5 |
     GPIO_PIN_6;
