@@ -65,8 +65,13 @@ function openGrantAccessModal(req_id, from, to, validity_time) {
   document.getElementById('input-access-valid-from-date').valueAsDate = fromDate;
   document.getElementById('input-access-valid-to-date').valueAsDate = toDate;
 
-  modal.find('#input-access-valid-from-time').val(prefixZero(fromDate.getHours()) + ':' + prefixZero(fromDate.getMinutes()) + ':' + prefixZero(fromDate.getSeconds()));
-  modal.find('#input-access-valid-to-time').val(prefixZero(toDate.getHours()) + ':' + prefixZero(toDate.getMinutes()) + ':' + prefixZero(toDate.getSeconds()));
+  if (fromDate !== null && toDate !== null && from !== 'None' && to !== 'None') {
+    modal.find('#input-access-valid-from-time').val(prefixZero(fromDate.getHours()) + ':' + prefixZero(fromDate.getMinutes()) + ':' + prefixZero(fromDate.getSeconds()));
+    modal.find('#input-access-valid-to-time').val(prefixZero(toDate.getHours()) + ':' + prefixZero(toDate.getMinutes()) + ':' + prefixZero(toDate.getSeconds()));
+  } else {
+    modal.find('#input-access-valid-from-time').val('');
+    modal.find('#input-access-valid-to-time').val('');
+  }
 
   modal.modal();
 }

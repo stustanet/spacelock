@@ -60,7 +60,7 @@
                     </div>
                     <div class="d-flex w-100 justify-content-start">
                       <small>{{ user.valid_from }} until {{ user.valid_to }}</small>
-                      <small class="pl-2">validity: {{ (user.token_validity_time / 60) |int }} minutes</small>
+                      <small class="pl-2">validity: {{ user.token_validity_time }} seconds</small>
                     </div>
                   </div>
                 {% endfor %}
@@ -119,7 +119,7 @@
                   </div>
                   <div class="d-flex w-100 justify-content-start">
                     <small>{{ user.valid_from }} until {{ user.valid_to }}</small>
-                    <small class="pl-2">validity: {{ (user.token_validity_time / 60) |int }} minutes</small>
+                    <small class="pl-2">validity: {{ user.token_validity_time }} seconds</small>
                   </div>
                 </div>
               {% endfor %}
@@ -176,6 +176,7 @@
                   <div class="form-group">
                     <input type="text" pattern="^\d{1,2}:\d{2}:\d{2}$" class="form-control" id="input-valid-from-time"
                            name='valid_from_time' placeholder="HH:MM:SS" required>
+{#                    <input type="time" class="form-control" id="input-valid-from-time" name="valid_from_time" required>#}
                     <div class="invalid-feedback">
                       Time is required and needs a proper format
                     </div>
@@ -198,6 +199,7 @@
                   <div class="form-group">
                     <input type="text" pattern="^\d{1,2}:\d{2}:\d{2}$" class="form-control" id="input-valid-to-time"
                            name='valid_to_time' placeholder="HH:MM:SS" required>
+{#                    <input type="time" class="form-control" id="input-valid-to-time" name="valid_to_time" required>#}
                     <div class="invalid-feedback">
                       Time is required and needs a proper format
                     </div>
@@ -314,7 +316,7 @@
               <div class="form-group">
                 <label for="input-validity-time">Token valid for</label>
                 <input type="number" class="form-control" id="input-validity-time" name='token_validity_time'
-                       placeholder="duration in min" required>
+                       placeholder="duration in seconds" required>
                 <div class="invalid-feedback">
                   Validity time is required
                 </div>

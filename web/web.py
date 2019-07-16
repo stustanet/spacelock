@@ -1,5 +1,4 @@
 import json
-import os
 import re
 from datetime import datetime
 
@@ -9,13 +8,12 @@ from flask_login import LoginManager, current_user, login_user, logout_user, log
 from flask_qrcode import QRcode
 from flask_wtf import CSRFProtect
 
+import settings
 from authentication import User
 from db import gen_token, modify_user, add_user, enable_user, disable_user, list_users, grant_access, del_user
 
-WIFI_SEND_URL = 'http://' + os.environ['LOCK_WIFI_IP'] + '/send/'
-
 app = Flask(__name__)
-app.secret_key = os.environ['FLASK_SECRET_KEY']
+app.secret_key = settings.SECRET_KEY
 
 QRcode(app)
 csrf = CSRFProtect(app)
@@ -100,25 +98,6 @@ def access_request():
     return render_template('access_request.html', **data)
 
 
-def _get_user_list():
-    users = list_users(current_user.key)
-    return {
-        'users': [
-            {
-                'id': user[0],
-                'req_id': user[1],
-                'name': user[2],
-                'valid_from': user[4],
-                'valid_to': user[5],
-                'token_validity_time': user[6],
-                'active': user[7],
-                'usermod': user[8]
-            }
-            for user in users
-        ]
-    }
-
-
 class AdvancedView(MethodView):
     decorators = [login_required]
 
@@ -137,8 +116,8 @@ class AdvancedView(MethodView):
                     'id': user[0],
                     'req_id': user[1],
                     'name': user[2],
-                    'valid_from': user[4],
-                    'valid_to': user[5],
+                    'valid_from': user[4].astimezone(settings.TIMEZONE) if user[4] is not None else None,
+                    'valid_to': user[4].astimezone(settings.TIMEZONE) if user[4] is not None else None,
                     'token_validity_time': user[6],
                     'active': user[7],
                     'usermod': user[8]
@@ -172,17 +151,17 @@ class AdvancedView(MethodView):
                 flash('Unknown date format for valid_from/valid_to', category='danger')
                 return self.render_template()
 
-            valid_from = datetime.strptime(
+            valid_from = settings.TIMEZONE.localize(datetime.strptime(
                 request.form.get('valid_from_date') + ' ' + request.form.get('valid_from_time'),
-                f'{date_pattern} %H:%M:%S')
-            valid_to = datetime.strptime(
+                f'{date_pattern} %H:%M:%S'))
+            valid_to = settings.TIMEZONE.localize(datetime.strptime(
                 request.form.get('valid_to_date') + ' ' + request.form.get('valid_to_time'),
-                f'{date_pattern} %H:%M:%S')
+                f'{date_pattern} %H:%M:%S'))
 
             usermod = request.form.get('usermod') == 'on'
 
             res = modify_user(current_user.key, request.form.get('req_id'), request.form.get('username'), valid_from,
-                              valid_to, request.form.get('token_validity_time'), usermod)[0]
+                              valid_to, request.form.get('token_validity_time'), usermod)
             if res is None:
                 flash('Error changing user', category='danger')
                 return self.render_template()
@@ -196,15 +175,15 @@ class AdvancedView(MethodView):
                 flash('Unknown date format for valid_from/valid_to', category='danger')
                 return self.render_template()
 
-            valid_from = datetime.strptime(
+            valid_from = settings.TIMEZONE.localize(datetime.strptime(
                 request.form.get('valid_from_date') + ' ' + request.form.get('valid_from_time'),
-                f'{date_pattern} %H:%M:%S')
-            valid_to = datetime.strptime(
+                f'{date_pattern} %H:%M:%S'))
+            valid_to = settings.TIMEZONE.localize(datetime.strptime(
                 request.form.get('valid_to_date') + ' ' + request.form.get('valid_to_time'),
-                f'{date_pattern} %H:%M:%S')
+                f'{date_pattern} %H:%M:%S'))
 
             res = grant_access(current_user.key, request.form.get('req_id'), request.form.get('username'), valid_from,
-                               valid_to, request.form.get('token_validity_time'))[0]
+                               valid_to, request.form.get('token_validity_time'))
 
             if res is None:
                 flash('Error granting access to user', category='danger')
@@ -229,7 +208,7 @@ def index():
 
         data = {
             'token': token,
-            'token_url': WIFI_SEND_URL + token
+            'token_url': settings.WIFI_SEND_URL + token
         }
 
         return render_template('access.html', **data)
