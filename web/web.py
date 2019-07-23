@@ -117,7 +117,7 @@ class AdvancedView(MethodView):
                     'req_id': user[1],
                     'name': user[2],
                     'valid_from': user[4].astimezone(settings.TIMEZONE) if user[4] is not None else None,
-                    'valid_to': user[4].astimezone(settings.TIMEZONE) if user[4] is not None else None,
+                    'valid_to': user[5].astimezone(settings.TIMEZONE) if user[5] is not None else None,
                     'token_validity_time': user[6],
                     'active': user[7],
                     'usermod': user[8]
