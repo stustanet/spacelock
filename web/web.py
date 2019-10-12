@@ -7,6 +7,7 @@ from flask.views import View, MethodView
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from flask_qrcode import QRcode
 from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFError
 
 import settings
 from authentication import User
@@ -26,6 +27,11 @@ login_manager.login_view = "login"
 @login_manager.user_loader
 def load_user(user_id):
     return User.get(user_id)
+
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    return redirect(url_for('index'))
 
 
 @app.route('/api/token', methods=['POST'])
