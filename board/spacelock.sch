@@ -1,0 +1,401 @@
+EESchema Schematic File Version 4
+LIBS:spacelock-cache
+EELAYER 29 0
+EELAYER END
+$Descr A3 16535 11693
+encoding utf-8
+Sheet 1 1
+Title ""
+Date ""
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L Connector:Conn_Coaxial_Power J1
+U 1 1 5D23A5BD
+P 1150 1800
+F 0 "J1" H 1378 1891 50  0000 L CNN
+F 1 "CP-036AHPJ" H 1378 1800 50  0000 L CNN
+F 2 "Connector_BarrelJack:BarrelJack_CUI_PJ-063AH_Horizontal" H 1150 1750 50  0001 C CNN
+F 3 "https://www.cui.com/product/resource/digikeypdf/pj-036ah-smt-tr.pdf" H 1150 1750 50  0001 C CNN
+F 4 "12V 1A" H 1378 1709 50  0000 L CNN "Comment"
+	1    1150 1800
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR0101
+U 1 1 5D23B3E8
+P 1150 2500
+F 0 "#PWR0101" H 1150 2250 50  0001 C CNN
+F 1 "GND" H 1155 2327 50  0000 C CNN
+F 2 "" H 1150 2500 50  0001 C CNN
+F 3 "" H 1150 2500 50  0001 C CNN
+	1    1150 2500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1150 2000 1150 2500
+$Comp
+L power:+12V #PWR0102
+U 1 1 5D23C000
+P 1150 1300
+F 0 "#PWR0102" H 1150 1150 50  0001 C CNN
+F 1 "+12V" H 1165 1473 50  0000 C CNN
+F 2 "" H 1150 1300 50  0001 C CNN
+F 3 "" H 1150 1300 50  0001 C CNN
+	1    1150 1300
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1150 1300 1150 1700
+$Comp
+L sft:SFTPOWERv1 U1
+U 1 1 5D23FF57
+P 2550 2450
+F 0 "U1" H 2550 2815 50  0000 C CNN
+F 1 "SFTPOWER-V1" H 2550 2724 50  0000 C CNN
+F 2 "sft:SFTPOWERv1" H 1900 3150 50  0001 C CNN
+F 3 "" H 1900 3150 50  0001 C CNN
+	1    2550 2450
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:+12V #PWR0103
+U 1 1 5D2415F6
+P 1900 2350
+F 0 "#PWR0103" H 1900 2200 50  0001 C CNN
+F 1 "+12V" H 1915 2523 50  0000 C CNN
+F 2 "" H 1900 2350 50  0001 C CNN
+F 3 "" H 1900 2350 50  0001 C CNN
+	1    1900 2350
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1900 2350 2100 2350
+$Comp
+L power:GND #PWR0104
+U 1 1 5D242E1C
+P 1900 2550
+F 0 "#PWR0104" H 1900 2300 50  0001 C CNN
+F 1 "GND" H 1905 2377 50  0000 C CNN
+F 2 "" H 1900 2550 50  0001 C CNN
+F 3 "" H 1900 2550 50  0001 C CNN
+	1    1900 2550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1900 2550 2100 2550
+$Comp
+L power:+5V #PWR0105
+U 1 1 5D2433D6
+P 3150 2350
+F 0 "#PWR0105" H 3150 2200 50  0001 C CNN
+F 1 "+5V" H 3165 2523 50  0000 C CNN
+F 2 "" H 3150 2350 50  0001 C CNN
+F 3 "" H 3150 2350 50  0001 C CNN
+	1    3150 2350
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR0106
+U 1 1 5D2437D3
+P 3150 2550
+F 0 "#PWR0106" H 3150 2300 50  0001 C CNN
+F 1 "GND" H 3155 2377 50  0000 C CNN
+F 2 "" H 3150 2550 50  0001 C CNN
+F 3 "" H 3150 2550 50  0001 C CNN
+	1    3150 2550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	3000 2550 3150 2550
+Wire Wire Line
+	3000 2350 3150 2350
+$Comp
+L Driver_Motor:Pololu_Breakout_DRV8825 A?
+U 1 1 5D2468A5
+P 6750 1600
+F 0 "A?" H 6750 2381 50  0000 C CNN
+F 1 "Pololu_Breakout_DRV8825" H 6750 2290 50  0000 C CNN
+F 2 "Module:Pololu_Breakout-16_15.2x20.3mm" H 6950 800 50  0001 L CNN
+F 3 "https://www.pololu.com/product/2982" H 6850 1300 50  0001 C CNN
+	1    6750 1600
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 5D247A57
+P 6750 2650
+F 0 "#PWR?" H 6750 2400 50  0001 C CNN
+F 1 "GND" H 6755 2477 50  0000 C CNN
+F 2 "" H 6750 2650 50  0001 C CNN
+F 3 "" H 6750 2650 50  0001 C CNN
+	1    6750 2650
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6750 2400 6750 2550
+Wire Wire Line
+	6850 2400 6850 2550
+Wire Wire Line
+	6850 2550 6750 2550
+Connection ~ 6750 2550
+Wire Wire Line
+	6750 2550 6750 2650
+$Comp
+L power:+12V #PWR?
+U 1 1 5D248607
+P 6200 700
+F 0 "#PWR?" H 6200 550 50  0001 C CNN
+F 1 "+12V" H 6215 873 50  0000 C CNN
+F 2 "" H 6200 700 50  0001 C CNN
+F 3 "" H 6200 700 50  0001 C CNN
+	1    6200 700 
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6200 700  6200 1000
+$Comp
+L sft:DCF1-Pollin U?
+U 1 1 5D24D13D
+P 1200 3950
+F 0 "U?" H 1258 4365 50  0000 C CNN
+F 1 "DCF1-Pollin" H 1258 4274 50  0000 C CNN
+F 2 "sft:DCF1-Pollin" H 1350 4350 50  0001 C CNN
+F 3 "https://www.pollin.de/productdownloads/D810054B.PDF" H 1150 4050 50  0001 C CNN
+	1    1200 3950
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 5D252BA6
+P 2350 4300
+F 0 "#PWR?" H 2350 4050 50  0001 C CNN
+F 1 "GND" H 2355 4127 50  0000 C CNN
+F 2 "" H 2350 4300 50  0001 C CNN
+F 3 "" H 2350 4300 50  0001 C CNN
+	1    2350 4300
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2350 4300 2350 4000
+Wire Wire Line
+	2350 3900 2250 3900
+Wire Wire Line
+	1450 4000 2350 4000
+Connection ~ 2350 4000
+Wire Wire Line
+	2350 4000 2350 3900
+$Comp
+L power:+3V3 #PWR?
+U 1 1 5D254786
+P 2050 3450
+F 0 "#PWR?" H 2050 3300 50  0001 C CNN
+F 1 "+3V3" H 2065 3623 50  0000 C CNN
+F 2 "" H 2050 3450 50  0001 C CNN
+F 3 "" H 2050 3450 50  0001 C CNN
+	1    2050 3450
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1450 3800 2050 3800
+Wire Wire Line
+	2050 3800 2050 3600
+Wire Wire Line
+	1450 4100 1600 4100
+Text GLabel 1600 4100 2    50   Output ~ 0
+TIME_SIGNAL
+$Comp
+L sft:TLV760 U?
+U 1 1 5D259AD8
+P 4600 3800
+F 0 "U?" H 4600 4187 60  0000 C CNN
+F 1 "TLV76033" H 4600 4081 60  0000 C CNN
+F 2 "" H 4600 3800 60  0001 C CNN
+F 3 "" H 4600 3800 60  0001 C CNN
+	1    4600 3800
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 5D25B85B
+P 4600 4300
+F 0 "#PWR?" H 4600 4050 50  0001 C CNN
+F 1 "GND" H 4605 4127 50  0000 C CNN
+F 2 "" H 4600 4300 50  0001 C CNN
+F 3 "" H 4600 4300 50  0001 C CNN
+	1    4600 4300
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:+5V #PWR?
+U 1 1 5D25DDEC
+P 3700 3800
+F 0 "#PWR?" H 3700 3650 50  0001 C CNN
+F 1 "+5V" H 3715 3973 50  0000 C CNN
+F 2 "" H 3700 3800 50  0001 C CNN
+F 3 "" H 3700 3800 50  0001 C CNN
+	1    3700 3800
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:+3V3 #PWR?
+U 1 1 5D25F542
+P 5400 3800
+F 0 "#PWR?" H 5400 3650 50  0001 C CNN
+F 1 "+3V3" H 5415 3973 50  0000 C CNN
+F 2 "" H 5400 3800 50  0001 C CNN
+F 3 "" H 5400 3800 50  0001 C CNN
+	1    5400 3800
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C C?
+U 1 1 5D25FAAF
+P 3800 3950
+F 0 "C?" H 3915 3996 50  0000 L CNN
+F 1 "100nF" H 3915 3905 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0603_1608Metric_Pad1.05x0.95mm_HandSolder" H 3838 3800 50  0001 C CNN
+F 3 "~" H 3800 3950 50  0001 C CNN
+	1    3800 3950
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	3800 4200 4600 4200
+Wire Wire Line
+	4600 4300 4600 4200
+Connection ~ 4600 4200
+Wire Wire Line
+	3800 4200 3800 4100
+Wire Wire Line
+	3700 3800 3800 3800
+Wire Wire Line
+	3800 3800 4000 3800
+Connection ~ 3800 3800
+Wire Wire Line
+	5200 3800 5300 3800
+$Comp
+L Device:C C?
+U 1 1 5D277722
+P 5300 3950
+F 0 "C?" H 5415 3996 50  0000 L CNN
+F 1 "100nF" H 5415 3905 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0603_1608Metric_Pad1.05x0.95mm_HandSolder" H 5338 3800 50  0001 C CNN
+F 3 "~" H 5300 3950 50  0001 C CNN
+	1    5300 3950
+	1    0    0    -1  
+$EndComp
+Connection ~ 5300 3800
+Wire Wire Line
+	5300 3800 5400 3800
+Wire Wire Line
+	4600 4200 5300 4200
+Wire Wire Line
+	5300 4200 5300 4100
+$Comp
+L Device:C C?
+U 1 1 5D27E680
+P 2250 3750
+F 0 "C?" H 2365 3796 50  0000 L CNN
+F 1 "10uF 6.3V" H 2365 3705 50  0000 L CNN
+F 2 "Capacitor_SMD:C_1206_3216Metric_Pad1.42x1.75mm_HandSolder" H 2288 3600 50  0001 C CNN
+F 3 "~" H 2250 3750 50  0001 C CNN
+	1    2250 3750
+	1    0    0    -1  
+$EndComp
+Connection ~ 2250 3900
+Wire Wire Line
+	2250 3900 1450 3900
+Wire Wire Line
+	2050 3600 2250 3600
+Connection ~ 2050 3600
+Wire Wire Line
+	2050 3600 2050 3450
+$Comp
+L Device:CP C?
+U 1 1 5D295028
+P 4300 850
+F 0 "C?" H 4418 896 50  0000 L CNN
+F 1 "22 uF 25V" H 4418 805 50  0000 L CNN
+F 2 "Capacitor_SMD:C_1206_3216Metric_Pad1.42x1.75mm_HandSolder" H 4338 700 50  0001 C CNN
+F 3 "~" H 4300 850 50  0001 C CNN
+	1    4300 850 
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:D_Zener D?
+U 1 1 5D2959E3
+P 5050 850
+F 0 "D?" V 5004 929 50  0000 L CNN
+F 1 "ZMM5248_R1_00001 18V" V 5095 929 50  0000 L CNN
+F 2 "Diode_SMD:D_MiniMELF_Handsoldering" H 5050 850 50  0001 C CNN
+F 3 "~" H 5050 850 50  0001 C CNN
+	1    5050 850 
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	5050 700  4300 700 
+Wire Wire Line
+	6100 1000 6200 1000
+Connection ~ 6200 1000
+Wire Wire Line
+	6200 1000 6750 1000
+Wire Wire Line
+	5050 1000 4300 1000
+$Comp
+L power:GND #PWR?
+U 1 1 5D2A9B0A
+P 5850 1050
+F 0 "#PWR?" H 5850 800 50  0001 C CNN
+F 1 "GND" H 5855 877 50  0000 C CNN
+F 2 "" H 5850 1050 50  0001 C CNN
+F 3 "" H 5850 1050 50  0001 C CNN
+	1    5850 1050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6100 1000 6100 700 
+Wire Wire Line
+	6100 700  5050 700 
+Connection ~ 5050 700 
+Wire Wire Line
+	5050 1000 5850 1000
+Wire Wire Line
+	5850 1000 5850 1050
+Connection ~ 5050 1000
+$Comp
+L Motor:Stepper_Motor_bipolar M?
+U 1 1 5D2C2D7A
+P 8000 1800
+F 0 "M?" H 8188 1924 50  0000 L CNN
+F 1 "Stepper_Motor_bipolar" H 8188 1833 50  0000 L CNN
+F 2 "" H 8010 1790 50  0001 C CNN
+F 3 "http://www.infineon.com/dgdl/Application-Note-TLE8110EE_driving_UniPolarStepperMotor_V1.1.pdf?fileId=db3a30431be39b97011be5d0aa0a00b0" H 8010 1790 50  0001 C CNN
+	1    8000 1800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	7150 1500 7150 1300
+Wire Wire Line
+	7150 1300 8100 1300
+Wire Wire Line
+	8100 1300 8100 1500
+Wire Wire Line
+	7150 1600 7250 1600
+Wire Wire Line
+	7250 1600 7250 1500
+Wire Wire Line
+	7250 1500 7900 1500
+Wire Wire Line
+	7150 1800 7350 1800
+Wire Wire Line
+	7350 1800 7350 1700
+Wire Wire Line
+	7350 1700 7700 1700
+Wire Wire Line
+	7150 1900 7700 1900
+$EndSCHEMATC
