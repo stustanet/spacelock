@@ -8,13 +8,17 @@
 --
 -- setup steps:
 -- * create a new user with `user_add()` and note down the request id and password
--- * call `first_admin_enable(requestid)` to activate the given user as admin
--- * enable further users with `user_grant_access(admin_password, requestid, ...)
--- * change a user's validity time with `user_mod(admin_password, ...)`
+-- * call `manual_admin_enable(requestid)` to activate the given user as admin
 --
--- regular usage:
+-- intended usage:
+-- * add users with `user_add()`
+-- * enable further users with `user_grant_access(admin_password, requestid, ...)
+-- * change a user's settings with `user_mod(admin_password, requestid, ...)`
 -- * generate an door-opening token with `gen_token(password)`
+--
+-- * to update the database's secret key
 
+-- security stuff:
 -- many of the functions are be executed in setuid-mode ("security definer")!
 -- to grant access to them, use:
 --   grant execute on function some_function_name to some_insecure_user;
@@ -26,6 +30,8 @@
 --   can_access ->  allow for a user that checks if a somebody may manage other users
 --   user_*     ->  allow for a user that serves a user-management UI
 
+
+begin;
 
 -- we use plpython
 -- the user loading this file needs superuser access,
@@ -45,29 +51,37 @@ end $$;
 
 
 -- secret signing key, shared with the door chip
-create table if not exists signer (
-	id bigserial not null,
-	secret text not null
-);
+do $$ begin
+	create table signer(
+		secret text not null
+	);
+	-- initialize the table with the firmware's default key
+	insert into signer (secret)
+	values ('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=');
+exception
+	when duplicate_table then null;
+end $$;
 
 
 -- permission definitions for door users
-create table if not exists permissions (
+create table if not exists permissions(
 	id bigserial primary key not null,
-	key text unique not null,
-	reqid text unique not null,
-	name text unique,
-	granted_by bigint references permissions(id),
+	key text unique not null,                      -- user's uuid for logins
+	reqid text unique not null,                    -- user'q account creation request id
+	name text unique,                              -- some name
+	granted_by bigint references permissions(id),  -- who enabled the user initially
 	valid_from timestamp with time zone,
 	valid_to timestamp with time zone,
-	token_validity_time int not null,
-	active boolean not null,
-	usermod boolean not null
+	token_validity_time int not null default 0,    -- duration for token validity
+	active boolean not null default false,         -- is the user enabled
+	usermod boolean not null default false,        -- may this user modify other users
+	keyupdate boolean not null default false,      -- may this user update the door key
+	hidden boolean not null default false          -- hide the user from the user list
 );
 
 
 -- token and access grant log
-create table if not exists log (
+create table if not exists log(
 	who bigint references permissions(id),
 	what text not null,
 	stamp timestamp with time zone default now()
@@ -80,7 +94,7 @@ create or replace function sign_message(
 	now_timestamp double precision,
 	validity_window_size int,
 	message_type int,
-	name text
+	payload_b64 text
 ) returns text as $$
 	import base64
 	import hmac
@@ -91,7 +105,7 @@ create or replace function sign_message(
 		int(now_timestamp) - validity_window_size,
 		int(now_timestamp) + validity_window_size,
 		message_type
-	) + name.encode()
+	) + base64.b64decode(payload_b64.encode())
 	signing_key_blob = base64.b64decode(signing_key.encode())
 
 	signature = hmac.new(signing_key_blob, msg=message_blob, digestmod='sha256').digest()
@@ -100,8 +114,65 @@ create or replace function sign_message(
 $$ language plpython3u;
 
 
+-- check message signature of a key-update message
+-- if signature is invalid, return NULL
+-- return the extracted payload as base64
+create or replace function extract_keyupdate(
+	signing_key text,
+	signed_msg text,
+	now_timestamp double precision
+) returns text as $$
+import base64
+import hashlib
+import hmac
+import struct
+
+
+signing_key_blob = base64.b64decode(signing_key.encode())
+
+signed_msg_blob = base64.b64decode(signed_msg)
+signature_blob = signed_msg_blob[:16]
+message_blob = signed_msg_blob[16:]
+
+validity_start, validity_end, msgtype = struct.unpack_from(
+    '<qqB',
+    message_blob
+)
+payload = message_blob[struct.calcsize("<qqB"):]
+sig = hmac.new(signing_key_blob, msg=message_blob, digestmod='sha256').digest()[:16]
+
+# signature and message type check
+if msgtype != 2 or sig != signature_blob:
+    return None
+
+# time validity check
+if now_timestamp <= validity_start or now_timestamp >= validity_end:
+    return None
+
+# implementation like in the firmware
+hash = hashlib.sha256()
+hash.update(signing_key_blob)
+hash.update(payload)
+new_key = hash.digest()
+
+return base64.b64encode(new_key).decode()
+$$ language plpython3u;
+
+
+-- generate a new secret 32 byte key
+create or replace function keygen()
+returns text as $$
+import base64
+import os
+
+# key is 32 bytes long
+new_key = os.urandom(32)
+return base64.b64encode(new_key).decode()
+$$ language plpython3u;
+
+
 do $$ begin
-	create type access_class as enum ('token', 'usermod');
+	create type access_class as enum ('token', 'usermod', 'keyupdate');
 exception
 	when duplicate_object then null;
 end $$;
@@ -123,11 +194,12 @@ begin
 		valid_from <= now_time and
 		valid_to >= now_time and (
 			(what = 'usermod' and usermod is true) or
+			(what = 'keyupdate' and keyupdate is true) or
 			(what = 'token')
 		);
 
 	if entry is NULL then
-		return null;
+		return NULL;
 	else
 		return entry.id;
 	end if;
@@ -137,12 +209,14 @@ security definer;
 
 
 -- token generation, this is the entry point for untrusted users
-create or replace function gen_token (
-	permission_key text
+create or replace function gen_message(
+	permission_key text,
+	msg_type access_class,
+	payload text
 )
 returns text as $$
-declare entry_id bigint;
 declare entry permissions%ROWTYPE;
+declare entry_id bigint;
 declare now_time timestamp with time zone;
 declare signing_key text;
 declare token text;
@@ -150,7 +224,7 @@ declare token_duration int;
 begin
 	select now() into now_time;
 
-	select can_access(permission_key, 'token') into entry_id;
+	select can_access(permission_key, msg_type) into entry_id;
 	select * into entry from permissions where id = entry_id;
 
 	if entry is NULL then
@@ -172,13 +246,17 @@ begin
 		signing_key,
 		extract(epoch from now_time),
 		token_duration,
-		1,    -- message type 1: open door
-		entry.reqid
+		(case
+		 when msg_type = 'token' then 1        -- message type 1: open door
+		 when msg_type = 'keyupdate' then 2    -- message type 2: secret key update
+		 else -1
+		 end),
+		payload
 	) into token;
 
 	insert into log (who, what) values (
 		entry.id,
-		format('create access token: %s', token)
+		format('emit %s: %s', msg_type, token)
 	);
 
 	return token;
@@ -187,7 +265,99 @@ $$ language plpgsql
 security definer;
 
 
--- create a random request identifier
+-- create a door access token
+create or replace function gen_token(
+	permission_key text
+)
+returns text as $$
+declare entry_id bigint;
+declare entry permissions%ROWTYPE;
+begin
+	select can_access(permission_key, 'token') into entry_id;
+	select * into entry from permissions where id = entry_id;
+
+	if entry is NULL then
+		return NULL;
+	end if;
+
+	return gen_message(
+		permission_key,
+		'token',
+		encode(convert_to(entry.reqid, 'UTF8'), 'base64')
+	);
+end;
+$$ language plpgsql
+security definer;
+
+
+-- create a key update token
+create or replace function gen_keyupdate(
+	permission_key text
+)
+returns text as $$
+declare new_key text;
+begin
+	select keygen() into new_key;
+
+	return gen_message(
+		permission_key,
+		'keyupdate',
+		new_key
+	);
+end;
+$$ language plpgsql
+security definer;
+
+
+-- update the key that is used for signing messages
+-- this function is called after the door key was updated
+create or replace function update_signingkey(
+	permission_key text,
+	update_message text
+)
+returns text as $$
+declare now_time timestamp with time zone;
+declare entry_id bigint;
+declare entry permissions%ROWTYPE;
+declare current_key text;
+declare new_key text;
+begin
+	select now() into now_time;
+
+	select can_access(permission_key, 'keyupdate') into entry_id;
+	select * into entry from permissions where id = entry_id;
+
+	if entry is NULL then
+		return NULL;
+	end if;
+
+	select secret into current_key from signer order by id desc limit 1;
+	if current_key is NULL then
+		return NULL;
+	end if;
+
+	select extract_keyupdate(current_key,
+	                         update_message,
+	                         extract(epoch from now_time)) into new_key;
+	if new_key is NULL then
+		return NULL;
+	end if;
+
+	-- write the new key to the database!
+	update signer set secret = new_key where secret = current_key;
+
+	insert into log (who, what) values (
+		entry.id,
+		'update signingkey'
+	);
+
+	return 'ok';
+end;
+$$ language plpgsql
+security definer;
+
+
+-- create a message that random request identifier
 create or replace function gen_reqid()
 returns text as $$
 	import random
@@ -218,14 +388,10 @@ begin
 	select crypt(ret.key, '$2a$06$lolspacelock1337salt42')
 	into hashed_new_key;
 
-	insert into permissions (key, reqid,
-	                         token_validity_time,
-	                         active, usermod) values (
+	insert into permissions (key, reqid)
+	values (
 		hashed_new_key,
-		ret.reqid,
-		0,
-		false,
-		false
+		ret.reqid
 	) returning id into new_id;
 
 	insert into log (who, what) values (
@@ -243,14 +409,16 @@ security definer;
 create or replace function user_mod(
 	admin_token text,
 	target_reqid text,
-	set_name text,
-	_valid_from timestamp with time zone,
-	_valid_to timestamp with time zone,
-	_token_validity_time int,
-	enable_usermod boolean default false
+	_name text default null,
+	_valid_from timestamp with time zone default null,
+	_valid_to timestamp with time zone default null,
+	_token_validity_time int default null,
+	enable_usermod boolean default null
 ) returns text as $$
 declare entry_id bigint;
 declare entry permissions%ROWTYPE;
+declare prev_state permissions%ROWTYPE;
+declare changes text array;
 begin
 	select can_access(admin_token, 'usermod') into entry_id;
 	select * into entry from permissions where id = entry_id;
@@ -259,19 +427,43 @@ begin
 		return NULL;
 	end if;
 
-	update permissions
-	set
-		name = set_name,
-		valid_from = _valid_from,
-		valid_to = _valid_to,
-		token_validity_time = _token_validity_time,
-		usermod = enable_usermod
-	where
-		reqid = target_reqid;
+	changes := array[]::text[];
+
+	select * into prev_state from permissions where reqid = target_reqid;
+
+	xxx todo name change test
+	if _name != prev_state.name then
+		update permissions set name = _name where reqid = target_reqid;
+		select array_append(changes, 'name') into changes;
+	end if;
+
+	if _valid_from != prev_state.valid_from then
+		update permissions set valid_from = _valid_from where reqid = target_reqid;
+		select array_append(changes, 'valid_from') into changes;
+	end if;
+
+	if _valid_to != prev_state.valid_to then
+		update permissions set valid_to = _valid_to where reqid = target_reqid;
+		select array_append(changes, 'valid_to') into changes;
+	end if;
+
+	if _token_validity_time != prev_state.token_validity_time then
+		update permissions set token_validity_time = _token_validity_time where reqid = target_reqid;
+		select array_append(changes, 'token_validity_time') into changes;
+	end if;
+
+	if enable_usermod != prev_state.usermod then
+		update permissions set usermod = enable_usermod where reqid = target_reqid;
+		select array_append(changes, 'usermod') into changes;
+	end if;
+
+	if cardinality(changes) = 0 then
+		return 'none';
+	end if;
 
 	insert into log (who, what) values (
 		entry.id,
-		format('modify user: %s', target_reqid)
+		format('modify user: %s: %s', target_reqid, array_to_string(changes, ', '))
 	);
 
 	return 'ok';
@@ -359,9 +551,10 @@ $$ language plpgsql
 security definer;
 
 
--- this function is used to activate the first admin user
+-- this function is used to activate an admin user
+-- call this manually in the DB only, not from the webapp etc.
 -- it uses no authorization!
-create or replace function first_admin_enable(
+create or replace function manual_admin_enable(
 	target_reqid text,
 	_valid_from timestamp with time zone default now(),
 	_valid_to timestamp with time zone default (now() + interval '31' day),
@@ -379,7 +572,7 @@ begin
 		reqid = target_reqid;
 
 	insert into log (what) values (
-		format('first admin user enabled: %s', target_reqid)
+		format('manual admin user enabled: %s', target_reqid)
 	);
 
 	return 'ok';
@@ -411,10 +604,12 @@ $$ language plpgsql
 security definer;
 
 
--- remove a user's account
-create or replace function user_del(
+-- hide/unhide a user's account
+-- that way we never actually delete users
+create or replace function user_set_visibility(
 	admin_token text,
-	target_reqid text
+	target_reqid text,
+	hide boolean
 ) returns text as $$
 declare entry_id bigint;
 declare entry permissions%ROWTYPE;
@@ -426,12 +621,13 @@ begin
 		return NULL;
 	end if;
 
-	delete from permissions
-	where reqid = target_reqid;
+	update permissions set hidden = hide where reqid = target_reqid;
 
 	insert into log (who, what) values (
 		entry.id,
-		format('delete user: %s', target_reqid)
+		format('%shide user: %s',
+		       case when hide then 'un' else '' end,
+		       target_reqid)
 	);
 
 	return 'ok';
@@ -442,7 +638,8 @@ security definer;
 
 -- list all users
 create or replace function user_list(
-	permission_key text
+	permission_key text,
+	show_hidden boolean default false
 )
 returns table (
 	id bigint,
@@ -476,9 +673,11 @@ begin
 			permissions.token_validity_time,
 			permissions.active,
 			permissions.usermod
-		from permissions;
+		from permissions
+		where (permissions.hidden = false) or show_hidden;
 end;
 $$ language plpgsql
 security definer;
 
 -- aand we're done!
+end;
