@@ -115,7 +115,7 @@ $$ language plpython3u;
 
 
 -- check message signature of a key-update message
--- if signature is invalid, return NULL
+-- if signature is invalid, return null
 -- return the extracted payload as base64
 create or replace function extract_keyupdate(
 	signing_key text,
@@ -198,8 +198,8 @@ begin
 			(what = 'token')
 		);
 
-	if entry is NULL then
-		return NULL;
+	if entry is null then
+		return null;
 	else
 		return entry.id;
 	end if;
@@ -227,13 +227,13 @@ begin
 	select can_access(permission_key, msg_type) into entry_id;
 	select * into entry from permissions where id = entry_id;
 
-	if entry is NULL then
-		return NULL;
+	if entry is null then
+		return null;
 	end if;
 
 	select secret into signing_key from signer order by id desc limit 1;
-	if signing_key is NULL then
-		return NULL;
+	if signing_key is null then
+		return null;
 	end if;
 
 	select greatest(
@@ -276,8 +276,8 @@ begin
 	select can_access(permission_key, 'token') into entry_id;
 	select * into entry from permissions where id = entry_id;
 
-	if entry is NULL then
-		return NULL;
+	if entry is null then
+		return null;
 	end if;
 
 	return gen_message(
@@ -327,20 +327,20 @@ begin
 	select can_access(permission_key, 'keyupdate') into entry_id;
 	select * into entry from permissions where id = entry_id;
 
-	if entry is NULL then
-		return NULL;
+	if entry is null then
+		return null;
 	end if;
 
 	select secret into current_key from signer order by id desc limit 1;
-	if current_key is NULL then
-		return NULL;
+	if current_key is null then
+		return null;
 	end if;
 
 	select extract_keyupdate(current_key,
 	                         update_message,
 	                         extract(epoch from now_time)) into new_key;
-	if new_key is NULL then
-		return NULL;
+	if new_key is null then
+		return null;
 	end if;
 
 	-- write the new key to the database!
@@ -424,35 +424,34 @@ begin
 	select * into entry from permissions where id = entry_id;
 
 	if entry is null then
-		return NULL;
+		return null;
 	end if;
 
 	changes := array[]::text[];
 
 	select * into prev_state from permissions where reqid = target_reqid;
 
-	xxx todo name change test
-	if _name != prev_state.name then
+	if _name is not null and _name != prev_state.name then
 		update permissions set name = _name where reqid = target_reqid;
 		select array_append(changes, 'name') into changes;
 	end if;
 
-	if _valid_from != prev_state.valid_from then
+	if _valid_from is not null and (prev_state.valid_from is null or _valid_from != prev_state.valid_from) then
 		update permissions set valid_from = _valid_from where reqid = target_reqid;
 		select array_append(changes, 'valid_from') into changes;
 	end if;
 
-	if _valid_to != prev_state.valid_to then
+	if _valid_to is not null and (prev_state.valid_to is null or _valid_to != prev_state.valid_to) then
 		update permissions set valid_to = _valid_to where reqid = target_reqid;
 		select array_append(changes, 'valid_to') into changes;
 	end if;
 
-	if _token_validity_time != prev_state.token_validity_time then
+	if _token_validity_time is not null and _token_validity_time != prev_state.token_validity_time then
 		update permissions set token_validity_time = _token_validity_time where reqid = target_reqid;
 		select array_append(changes, 'token_validity_time') into changes;
 	end if;
 
-	if enable_usermod != prev_state.usermod then
+	if enable_usermod is not null and enable_usermod != prev_state.usermod then
 		update permissions set usermod = enable_usermod where reqid = target_reqid;
 		select array_append(changes, 'usermod') into changes;
 	end if;
@@ -486,13 +485,13 @@ begin
 	select * into entry from permissions where id = entry_id;
 
 	if entry is null then
-		return NULL;
+		return null;
 	end if;
 
 	select active into previous_state from permissions where reqid = target_reqid;
 
 	if previous_state = _active then
-		return NULL;
+		return null;
 	end if;
 
 	update permissions
@@ -618,7 +617,7 @@ begin
 	select * into entry from permissions where id = entry_id;
 
 	if entry is null then
-		return NULL;
+		return null;
 	end if;
 
 	update permissions set hidden = hide where reqid = target_reqid;
