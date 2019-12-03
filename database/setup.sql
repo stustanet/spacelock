@@ -231,7 +231,7 @@ begin
 		return null;
 	end if;
 
-	select secret into signing_key from signer order by id desc limit 1;
+	select secret into signing_key from signer limit 1;
 	if signing_key is null then
 		return null;
 	end if;
@@ -331,7 +331,7 @@ begin
 		return null;
 	end if;
 
-	select secret into current_key from signer order by id desc limit 1;
+	select secret into current_key from signer limit 1;
 	if current_key is null then
 		return null;
 	end if;
