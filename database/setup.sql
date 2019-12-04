@@ -431,7 +431,7 @@ begin
 
 	select * into prev_state from permissions where reqid = target_reqid;
 
-	if _name is not null and _name != prev_state.name then
+	if _name is not null and (prev_state.name is null or _name != prev_state.name) then
 		update permissions set name = _name where reqid = target_reqid;
 		select array_append(changes, 'name') into changes;
 	end if;
