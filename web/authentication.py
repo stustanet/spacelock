@@ -26,4 +26,3 @@ class User(UserMixin):
             return User(user_id, key)
         else:
             return None
-

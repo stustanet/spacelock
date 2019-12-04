@@ -20,7 +20,7 @@
 
     <div class="row justify-content-center">
       <div class="col-sm-12 col-md-8 col-lg-8">
-        <div class="card">
+        <div class="card mb-3">
           <div class="card-header">
             User Management
           </div>
@@ -49,13 +49,14 @@
                           Grant
                         </button>
 
-                        {#                      <form action="{{ url_for('advanced', action='delete_user') }}" method="post">#}
-                        {#                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">#}
-                        {#                        <input type="hidden" name="req_id" value="{{ user.req_id }}">#}
-                        {#                        <button type="submit" class="btn btn-sm btn-outline-danger mr-1">#}
-                        {#                          Delete#}
-                        {#                        </button>#}
-                        {#                      </form>#}
+                        <form action="{{ url_for('advanced', action='delete_user') }}"
+                              method="post">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <input type="hidden" name="req_id" value="{{ user.req_id }}">
+                          <button type="submit" class="btn btn-sm btn-outline-danger mr-1">
+                            Delete
+                          </button>
+                        </form>
                       </div>
                     </div>
                     <div class="d-flex w-100 justify-content-start">
@@ -108,13 +109,14 @@
                         Change
                       </button>
 
-                      {#                      <form action="{{ url_for('advanced', action='delete_user') }}" method="post">#}
-                      {#                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">#}
-                      {#                        <input type="hidden" name="req_id" value="{{ user.req_id }}">#}
-                      {#                        <button type="submit" class="btn btn-sm btn-outline-danger mr-1">#}
-                      {#                          Delete#}
-                      {#                        </button>#}
-                      {#                      </form>#}
+                      <form action="{{ url_for('advanced', action='delete_user') }}"
+                            method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="req_id" value="{{ user.req_id }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger mr-1">
+                          Delete
+                        </button>
+                      </form>
                     </div>
                   </div>
                   <div class="d-flex w-100 justify-content-start">
@@ -124,6 +126,18 @@
                 </div>
               {% endfor %}
             </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <h5>More Actions</h5>
+            <div class="list-group">
+              <div class="list-group-item flex-row">
+                <span>Change Signing Key</span>
+                <a href="{{ url_for('change_signing_key') }}" class="btn btn-outline-primary float-right">Do IT</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -176,7 +190,7 @@
                   <div class="form-group">
                     <input type="text" pattern="^\d{1,2}:\d{2}:\d{2}$" class="form-control" id="input-valid-from-time"
                            name='valid_from_time' placeholder="HH:MM:SS" required>
-{#                    <input type="time" class="form-control" id="input-valid-from-time" name="valid_from_time" required>#}
+                    {#                    <input type="time" class="form-control" id="input-valid-from-time" name="valid_from_time" required>#}
                     <div class="invalid-feedback">
                       Time is required and needs a proper format
                     </div>
@@ -199,7 +213,7 @@
                   <div class="form-group">
                     <input type="text" pattern="^\d{1,2}:\d{2}:\d{2}$" class="form-control" id="input-valid-to-time"
                            name='valid_to_time' placeholder="HH:MM:SS" required>
-{#                    <input type="time" class="form-control" id="input-valid-to-time" name="valid_to_time" required>#}
+                    {#                    <input type="time" class="form-control" id="input-valid-to-time" name="valid_to_time" required>#}
                     <div class="invalid-feedback">
                       Time is required and needs a proper format
                     </div>
@@ -335,32 +349,32 @@
 
 {% block scripts %}
   <script type="text/javascript">
-    (function () {
-      'use strict';
-      window.addEventListener('load', function () {
-        // Fetch all the forms we want to apply custom Bootstrap validation styles to
-        const forms = document.getElementsByClassName('needs-validation');
-        // Loop over them and prevent submission
-        const validation = Array.prototype.filter.call(forms, function (form) {
-          form.addEventListener('submit', function (event) {
-            if (form.checkValidity() === false) {
-              event.preventDefault();
-              event.stopPropagation();
-            }
-            form.classList.add('was-validated');
+      (function () {
+          'use strict';
+          window.addEventListener('load', function () {
+              // Fetch all the forms we want to apply custom Bootstrap validation styles to
+              const forms = document.getElementsByClassName('needs-validation');
+              // Loop over them and prevent submission
+              const validation = Array.prototype.filter.call(forms, function (form) {
+                  form.addEventListener('submit', function (event) {
+                      if (form.checkValidity() === false) {
+                          event.preventDefault();
+                          event.stopPropagation();
+                      }
+                      form.classList.add('was-validated');
+                  }, false);
+              });
           }, false);
-        });
-      }, false);
 
-      $("#input-search").on("keyup", function () {
-        const value = $(this).val().toLowerCase();
-        $(".access-request-item").filter(function () {
-          $(this).toggle($(this).find('.user-req-id').text().toLowerCase().indexOf(value) > -1)
-        });
-      });
-    })();
-    {% if preselect %}
-      $("#grant-access-modal").modal();
-    {% endif %}
+          $("#input-search").on("keyup", function () {
+              const value = $(this).val().toLowerCase();
+              $(".access-request-item").filter(function () {
+                  $(this).toggle($(this).find('.user-req-id').text().toLowerCase().indexOf(value) > -1)
+              });
+          });
+      })();
+      {% if preselect %}
+          $("#grant-access-modal").modal();
+      {% endif %}
   </script>
 {% endblock %}

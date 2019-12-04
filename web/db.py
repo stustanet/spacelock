@@ -52,30 +52,47 @@ class Database:
         if not self.closed():
             self.conn.commit()
 
+    def rollback(self):
+        if not self.closed():
+            self.conn.rollback()
+
 
 database = Database(settings.DB_CONFIG)
 
 
-def _exec_query(query, *params, fetchall=False, commit=False):
-    try:
-        with database as cursor:
+def _exec_query(query, *params, fetchall=False):
+    with database as cursor:
+        try:
             cursor.execute(query, params)
 
-            if commit:
-                database.commit()
+            database.commit()
             if not fetchall:
                 return cursor.fetchone()
             else:
                 return cursor.fetchall()
-    except (psycopg2.DataError, psycopg2.IntegrityError):
-        return None
+        except psycopg2.Error as e:
+            database.rollback()
+            print(f'Postgres Error: {e}')
+            return None
 
 
 def gen_token(key: str) -> Optional[str]:
-    res = _exec_query('SELECT gen_token(%s)', key, commit=True)
+    res = _exec_query('SELECT gen_token(%s)', key)
     if res is None:
         return None
     return res[0]
+
+
+def gen_signing_key_token(admin_key: str) -> Optional[str]:
+    res = _exec_query('SELECT gen_keyupdate(%s)', admin_key)
+    if res is None:
+        return None
+    return res[0]
+
+
+def update_signingkey(admin_key: str, update_message: str) -> bool:
+    res = _exec_query('SELECT update_signingkey(%s, %s)', admin_key, update_message)
+    return res is not None
 
 
 def can_access(key: str, access_class: str) -> Optional[int]:
@@ -89,7 +106,9 @@ def list_users(key: str) -> List:
     res = _exec_query(
         'SELECT id, reqid, name, granted_by, valid_from, valid_to, token_validity_time, active, usermod '
         'from user_list(%s)',
-        key, fetchall=True)
+        key,
+        fetchall=True,
+    )
     if res is None:
         return []
     return res
@@ -100,42 +119,65 @@ def add_user() -> Tuple[Optional[str], Optional[str]]:
     create new user
     :return: Tuple consisting of registration code and secret key
     """
-    res = _exec_query('SELECT * from user_add()', commit=True)
+    res = _exec_query('SELECT * from user_add()')
     if res is None:
         return None, None
     return res
 
 
-def del_user(admin_key: str, req_id: str) -> Optional[str]:
-    # TODO: implement such that is werks
-    res = _exec_query('SELECT from user_del(%s, %s)', admin_key, req_id)
+def del_user(admin_key: str, req_id: str) -> bool:
+    res = _exec_query(
+        'SELECT from user_set_visibility(%s, %s, %s)', admin_key, req_id, True
+    )
 
-    if res is None:
-        return None
-    return res[0]
-
-
-def modify_user(admin_key: str, req_id: str, username: str, valid_from: datetime, valid_to: datetime,
-                token_validity_time: int, enable_usermod=False):
-    res = _exec_query('SELECT user_mod(%s, %s, %s, %s, %s, %s, %s)', admin_key, req_id, username, valid_from, valid_to,
-                      token_validity_time, enable_usermod, commit=True)
-    if res is None:
-        return None
-    return res[0]
+    return res is not None
 
 
-def grant_access(admin_key: str, req_id: str, username: str, valid_from: datetime, valid_to: datetime,
-                 token_validity_time: int):
-    res = _exec_query('SELECT user_grant_access(%s, %s, %s, %s, %s, %s)', admin_key, req_id, username, valid_from,
-                      valid_to, token_validity_time, commit=True)
+def modify_user(
+    admin_key: str,
+    req_id: str,
+    username: str,
+    valid_from: datetime,
+    valid_to: datetime,
+    token_validity_time: int,
+    enable_usermod=False,
+) -> bool:
+    res = _exec_query(
+        'SELECT user_mod(%s, %s, %s, %s, %s, %s, %s)',
+        admin_key,
+        req_id,
+        username,
+        valid_from,
+        valid_to,
+        token_validity_time,
+        enable_usermod,
+    )
+    return res is not None
 
-    if res is None:
-        return None
-    return res[0]
+
+def grant_access(
+    admin_key: str,
+    req_id: str,
+    username: str,
+    valid_from: datetime,
+    valid_to: datetime,
+    token_validity_time: int,
+) -> bool:
+    res = _exec_query(
+        'SELECT user_grant_access(%s, %s, %s, %s, %s, %s)',
+        admin_key,
+        req_id,
+        username,
+        valid_from,
+        valid_to,
+        token_validity_time,
+    )
+
+    return res is not None
 
 
 def enable_user(admin_key: str, req_id: str) -> Optional[str]:
-    res = _exec_query('SELECT user_enable(%s, %s)', admin_key, req_id, commit=True)
+    res = _exec_query('SELECT user_enable(%s, %s)', admin_key, req_id)
 
     if res is None:
         return None
@@ -143,7 +185,7 @@ def enable_user(admin_key: str, req_id: str) -> Optional[str]:
 
 
 def disable_user(admin_key: str, req_id: str) -> Optional[str]:
-    res = _exec_query('SELECT user_disable(%s, %s)', admin_key, req_id, commit=True)
+    res = _exec_query('SELECT user_disable(%s, %s)', admin_key, req_id)
 
     if res is None:
         return None

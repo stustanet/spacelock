@@ -11,7 +11,17 @@ from flask_wtf.csrf import CSRFError
 
 import settings
 from authentication import User
-from db import gen_token, modify_user, add_user, enable_user, disable_user, list_users, grant_access, del_user
+from db import (
+    gen_token,
+    modify_user,
+    add_user,
+    enable_user,
+    disable_user,
+    list_users,
+    grant_access,
+    del_user,
+    gen_signing_key_token,
+    update_signingkey)
 
 app = Flask(__name__)
 app.secret_key = settings.SECRET_KEY
@@ -110,7 +120,7 @@ class AdvancedView(MethodView):
     def get_template_name(self):
         return 'advanced.html'
 
-    def render_template(self):
+    def render(self):
         return render_template(self.get_template_name(), **self.get_context())
 
     def get_context(self):
@@ -133,76 +143,102 @@ class AdvancedView(MethodView):
         }
 
     def get(self):
-        return self.render_template()
+        return self.render()
+
+    def _modify_user(self, grant_only):
+        if re.match(r'^\d{2}/\d{2}/\d{4}$', request.form.get('valid_from_date')):
+            date_pattern = '%m/%d/%Y'
+        elif re.match(r'^\d{4}-\d{2}-\d{2}$', request.form.get('valid_from_date')):
+            date_pattern = '%Y-%m-%d'
+        else:
+            flash('Unknown date format for valid_from/valid_to', category='danger')
+            return self.render()
+
+        valid_from = settings.TIMEZONE.localize(datetime.strptime(
+            request.form.get('valid_from_date') + ' ' + request.form.get('valid_from_time'),
+            f'{date_pattern} %H:%M:%S'))
+        valid_to = settings.TIMEZONE.localize(datetime.strptime(
+            request.form.get('valid_to_date') + ' ' + request.form.get('valid_to_time'),
+            f'{date_pattern} %H:%M:%S'))
+
+        usermod = request.form.get('usermod') == 'on'
+
+        if grant_only:
+            res = grant_access(
+                current_user.key,
+                request.form.get('req_id'),
+                request.form.get('username'),
+                valid_from,
+                valid_to,
+                request.form.get('token_validity_time'))
+        else:
+            res = modify_user(
+                current_user.key,
+                request.form.get('req_id'),
+                request.form.get('username'),
+                valid_from,
+                valid_to,
+                request.form.get('token_validity_time'),
+                usermod)
+        if res is None:
+            flash('Error changing user', category='danger')
+
+        return self.render()
 
     def post(self):
         if 'action' not in request.args:
-            return self.render_template()
+            return self.render()
 
         if request.args.get('action') == 'enable_user':
             res = enable_user(current_user.key, request.form.get('req_id'))
-
         elif request.args.get('action') == 'disable_user':
             res = disable_user(current_user.key, request.form.get('req_id'))
-
         elif request.args.get('action') == 'delete_user':
             res = del_user(current_user.key, request.form.get('req_id'))
-
         elif request.args.get('action') == 'modify_user':
-            if re.match(r'^\d{2}/\d{2}/\d{4}$', request.form.get('valid_from_date')):
-                date_pattern = '%m/%d/%Y'
-            elif re.match(r'^\d{4}-\d{2}-\d{2}$', request.form.get('valid_from_date')):
-                date_pattern = '%Y-%m-%d'
-            else:
-                flash('Unknown date format for valid_from/valid_to', category='danger')
-                return self.render_template()
-
-            valid_from = settings.TIMEZONE.localize(datetime.strptime(
-                request.form.get('valid_from_date') + ' ' + request.form.get('valid_from_time'),
-                f'{date_pattern} %H:%M:%S'))
-            valid_to = settings.TIMEZONE.localize(datetime.strptime(
-                request.form.get('valid_to_date') + ' ' + request.form.get('valid_to_time'),
-                f'{date_pattern} %H:%M:%S'))
-
-            usermod = request.form.get('usermod') == 'on'
-
-            res = modify_user(current_user.key, request.form.get('req_id'), request.form.get('username'), valid_from,
-                              valid_to, request.form.get('token_validity_time'), usermod)
-            if res is None:
-                flash('Error changing user', category='danger')
-                return self.render_template()
-
+            return self._modify_user(grant_only=False)
         elif request.args.get('action') == 'grant_access':
-            if re.match(r'^\d{2}/\d{2}/\d{4}$', request.form.get('valid_from_date')):
-                date_pattern = '%m/%d/%Y'
-            elif re.match(r'^\d{4}-\d{2}-\d{2}$', request.form.get('valid_from_date')):
-                date_pattern = '%Y-%m-%d'
-            else:
-                flash('Unknown date format for valid_from/valid_to', category='danger')
-                return self.render_template()
-
-            valid_from = settings.TIMEZONE.localize(datetime.strptime(
-                request.form.get('valid_from_date') + ' ' + request.form.get('valid_from_time'),
-                f'{date_pattern} %H:%M:%S'))
-            valid_to = settings.TIMEZONE.localize(datetime.strptime(
-                request.form.get('valid_to_date') + ' ' + request.form.get('valid_to_time'),
-                f'{date_pattern} %H:%M:%S'))
-
-            res = grant_access(current_user.key, request.form.get('req_id'), request.form.get('username'), valid_from,
-                               valid_to, request.form.get('token_validity_time'))
-
-            if res is None:
-                flash('Error granting access to user', category='danger')
-                return self.render_template()
+            return self._modify_user(grant_only=True)
         else:
             flash(f'Unknown action {request.args.get("action")}', category='danger')
-            return self.render_template()
+            return self.render()
 
-        if res is None:
+        if res is None or not res:
             flash('Error', category='danger')
-            return self.render_template()
 
-        return self.render_template()
+        return self.render()
+
+
+class ChangeSigningKeyView(MethodView):
+    decorators = [login_required]
+
+    def render(self, data):
+        return render_template('change_signing_key.html', **data)
+
+    def get(self):
+        token = gen_signing_key_token(current_user.key)
+        if token is None:
+            flash('Failed to create key update token.', category='danger')
+            return redirect(url_for('advanced'))
+
+        data = {
+            'token': token,
+            'token_url': settings.WIFI_SEND_URL + token
+        }
+
+        return self.render(data)
+
+    def post(self):
+        token = request.form.get('token')
+
+        res = update_signingkey(current_user.key, token)
+
+        if res:
+            flash('Signing key update successful.', category='success')
+        else:
+            flash('Signing key update failed.', category='danger')
+
+        return redirect(url_for('advanced'))
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -223,3 +259,4 @@ def index():
 
 
 app.add_url_rule('/advanced', view_func=AdvancedView.as_view('advanced'))
+app.add_url_rule('/change_signing_key', view_func=ChangeSigningKeyView.as_view('change_signing_key'))

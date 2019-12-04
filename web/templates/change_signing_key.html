@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% set active_page = "advanced" %}
+
+{% block body %}
+
+  <div class="container pt-3">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
+      {% if messages %}
+        {% for category, message in messages %}
+          <div
+              class="alert alert-{% if category == 'message' %}danger{% else %}{{ category }}{% endif %} alert-dismissible"
+              role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span
+                aria-hidden="true">&times;</span></button>
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="row justify-content-center">
+      <div class="col-sm-12 col-md-8 col-lg-8">
+        <div class="card">
+          <div class="card-header">
+            <h4>Change Key Message</h4>
+          </div>
+          <div class="card-body">
+            <div class="card-text">
+              <div class="text-center">
+                <img src="{{ qrcode(token) }}" class="img-fluid" alt="{{ token }}">
+              </div>
+              <div class="pt-3 text-center">
+                <a href="{{ token_url }}" target="_blank">Send directly via WIFI</a>
+              </div>
+              <div class="pt-3 text-center">
+                <button class="btn btn-lg btn-primary" onclick="sendToken('{{ token }}')">Bluetooth</button>
+              </div>
+              <hr>
+              <div class="pt-3 text-center">
+                <form id="confirm-update-form" action="{{ url_for('change_signing_key') }}" method="POST">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="token" value="{{ token }}">
+                  <input id="submit-btn" data-toggle="modal" data-target="#confirm-submit" class="btn btn-lg btn-danger"
+                          type="button" value="Bestätigen">
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="confirm-submit" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+       aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          Confirm Submit
+        </div>
+        <div class="modal-body">
+          Y you do know what you're doing right?
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+          <a href="#" id="submit" class="btn btn-success success">Submit</a>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script type="application/javascript">
+    $('#submit-btn').click(function () {
+        /* when the button in the form, display the entered values in the modal */
+    });
+
+    $('#submit').click(function () {
+        /* when the submit button in the modal is clicked, submit the form */
+        $('#confirm-update-form').submit();
+    });
+</script>
+{% endblock %}
