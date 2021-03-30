@@ -1,0 +1,15 @@
+{
+  "background_color": "white",
+  "description": "Spacelock for StuStaNet Hackerspace",
+  "display": "fullscreen",
+  "icons": [
+    {
+      "src": "safespace.png",
+      "sizes": "500x500",
+      "type": "{{ url_for('static', filename='img/safespace.png') }}"
+    }
+  ],
+  "name": "Spacelock",
+  "short_name": "Spacelock",
+  "start_url": "{{ url_for('.index') }}"
+}

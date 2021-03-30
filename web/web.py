@@ -240,6 +240,10 @@ class ChangeSigningKeyView(MethodView):
 
         return redirect(url_for('advanced'))
 
+@app.route('/manifest.webmanifest', methods=['GET'])
+def manifest():
+    return render_template('manifest.webmanifest')
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
