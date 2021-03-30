@@ -2,7 +2,7 @@ import json
 import re
 from datetime import datetime
 
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, make_response
 from flask.views import View, MethodView
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from flask_qrcode import QRcode
@@ -242,7 +242,10 @@ class ChangeSigningKeyView(MethodView):
 
 @app.route('/manifest.webmanifest', methods=['GET'])
 def manifest():
-    return render_template('manifest.webmanifest')
+    resp = make_response(render_template('manifest.webmanifest'))
+    resp.headers['Content-type'] = 'application/manifest+json; charset=utf-8'
+    return resp
+
 
 
 @app.route('/', methods=['GET', 'POST'])
