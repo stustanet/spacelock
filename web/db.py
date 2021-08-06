@@ -104,8 +104,8 @@ def can_access(key: str, access_class: str) -> Optional[int]:
 
 def list_users(key: str) -> List:
     res = _exec_query(
-        'SELECT id, reqid, name, granted_by, valid_from, valid_to, token_validity_time, active, usermod '
-        'from user_list(%s)',
+        'SELECT id, reqid, name, granted_by, valid_from, valid_to, token_validity_time, active, usermod, valid_from < NOW() AND NOW() < valid_to AND active AS has_access '
+        'FROM user_list(%s) ORDER BY has_access DESC, name',
         key,
         fetchall=True,
     )
