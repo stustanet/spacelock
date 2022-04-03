@@ -678,5 +678,24 @@ end;
 $$ language plpgsql
 security definer;
 
+-- get valid_to of a user
+create or replace function get_valid_to(
+    permission_key text
+) returns timestamp with time zone as $$
+declare entry_id bigint;
+declare entry permissions%ROWTYPE;
+begin
+	select can_access(permission_key, 'token') into entry_id;
+	select * into entry from permissions where id = entry_id;
+
+	if entry is null then
+		return null;
+	end if;
+
+	return entry.valid_to;
+end;
+$$ language plpgsql
+security definer;
+
 -- aand we're done!
 end;

@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Flask, render_template, request, redirect, url_for, flash, make_response
 from flask.views import View, MethodView
@@ -21,7 +21,9 @@ from db import (
     grant_access,
     del_user,
     gen_signing_key_token,
-    update_signingkey)
+    update_signingkey,
+    get_valid_to,
+)
 
 app = Flask(__name__)
 app.secret_key = settings.SECRET_KEY
@@ -256,9 +258,15 @@ def index():
         if token is None:
             return render_template('error.html', error='DENIED!!!')
 
+        expires_soon = None
+        valid_to = get_valid_to(request.form.get('secret_key'))
+        if valid_to - datetime.now(settings.TIMEZONE) < timedelta(weeks=2):
+            expires_soon = valid_to.astimezone(settings.TIMEZONE) 
+
         data = {
             'token': token,
-            'token_url': settings.WIFI_SEND_URL + token
+            'token_url': settings.WIFI_SEND_URL + token,
+            'expires_soon': expires_soon,
         }
 
         return render_template('access.html', **data)

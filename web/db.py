@@ -190,3 +190,10 @@ def disable_user(admin_key: str, req_id: str) -> Optional[str]:
     if res is None:
         return None
     return res[0]
+
+def get_valid_to(key: str) -> Optional[datetime]:
+    res = _exec_query('SELECT get_valid_to(%s)', key)
+    if res is None:
+        return None
+    return res[0]
+
