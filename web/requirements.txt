@@ -1,14 +1,23 @@
-click==7.1.2
-Flask==1.1.2
-Flask-Login==0.5.0
-Flask-QRcode==3.0.0
-Flask-WTF==0.14.3
-itsdangerous==1.1.0
-Jinja2==2.11.2
-MarkupSafe==1.1.1
-Pillow==7.2.0
-psycopg2-binary==2.8.6
-pytz==2020.1
-qrcode==6.1
-six==1.15.0
-WTForms==2.3.3
+# commented packages are installed as dependencies of the previous one
+
+Flask~=2.1.1
+#itsdangerous~=2.1.1
+#MarkupSafe~=2.1.1
+#Werkzeug~=2.1.1
+#click~=8.1.2
+#Jinja2~=3.1.1
+
+Flask-Login~=0.6.0
+
+Flask-QRcode~=3.0.0
+#qrcode~=7.3.1
+#Pillow~=9.1.0
+
+Flask-WTF~=1.0.1
+#WTForms~=3.0.1
+
+psycopg2-binary~=2.9.3
+pytz~=2022.1
+
+# for msggen.py
+cbor2

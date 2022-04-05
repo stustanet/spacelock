@@ -2,7 +2,7 @@ import argparse
 from hashlib import sha256
 
 import base64
-import cbor
+import cbor2
 import json
 import qrcode
 
@@ -11,7 +11,7 @@ cli.add_argument("message")
 args = cli.parse_args()
 
 message = json.loads(args.message)
-encoded = cbor.dumps(message)
+encoded = cbor2.dumps(message)
 
 with open('secretkey', 'rb') as fileobj:
     secret_key = fileobj.read()
