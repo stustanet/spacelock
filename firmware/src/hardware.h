@@ -106,10 +106,12 @@ void uart_data_received(uint8_t byte);
  */
 void uart_transmit_next();
 
+#ifdef __cplusplus
 /**
  * Transmits a line on UART.
  */
-void uart_writeline(const char *text);
+void uart_writeline(const char *text, const uint64_t *param=nullptr);
+#endif
 
 #ifdef __cplusplus
 }

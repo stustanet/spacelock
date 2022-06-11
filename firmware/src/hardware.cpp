@@ -98,8 +98,19 @@ void uart_transmit_next() {
     }
 }
 
-void uart_writeline(const char *text) {
+void uart_writeline(const char *text, const uint64_t *param) {
     txbuf.add(text);
+    if (param != nullptr) {
+        bool started = false;
+        for (int8_t shift = 60; shift >= 0; shift -= 4)
+        {
+            uint8_t digit = (*param >> shift) & 0xf;
+            if (digit != 0) { started = true; }
+            if (started || (shift == 0)) {
+                txbuf.add("0123456789abcdef"[digit]);
+            }
+        }
+    }
     txbuf.add('\r');
     txbuf.add('\n');
     uart_transmit_next();

@@ -1,0 +1,2 @@
+- debug footprint placement is bad (cannot reach it from the side)
+- dcf77 connector must be configurable

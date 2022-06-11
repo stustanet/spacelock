@@ -1,0 +1,12 @@
+#!/bin/sh
+cp ../gerber/board.drl board.XLN
+cp ../gerber/board-F_Cu.gbr board.GTL
+cp ../gerber/board-B_Cu.gbr board.GBL
+cp ../gerber/board-F_Mask.gbr board.GTS
+cp ../gerber/board-B_Mask.gbr board.GBS
+cp ../gerber/board-F_SilkS.gbr board.GTO
+cp ../gerber/board-B_SilkS.gbr board.GBO
+cp ../gerber/board-Edge_Cuts.gbr board.GKO
+rm -f board.zip
+zip board.zip board.XLN board.G*
+rm board.XLN board.G*

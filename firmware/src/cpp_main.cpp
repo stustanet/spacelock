@@ -157,13 +157,13 @@ static void cpp_main_in_cpp() {
 
         if (valid_from > current_timestamp) {
             // message is not yet valid
-            uart_writeline("message is not yet valid");
+            uart_writeline("message is not yet valid, internal clock 0x", &current_timestamp);
             beeper.error(5);
             continue;
         }
         if (valid_until < current_timestamp) {
             // mesage is no longer valid
-            uart_writeline("message is no longer valid");
+            uart_writeline("message is no longer valid, internal clock 0x", &current_timestamp);
             beeper.error(6);
             continue;
         }
