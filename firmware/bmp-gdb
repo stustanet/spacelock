@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+import argparse
+import os
+import shlex
+import shutil
+
+cli = argparse.ArgumentParser()
+cli.add_argument('--interface-name', default='black magic gdb server')
+cli.add_argument('--gdb-path')
+cli.add_argument('-v', '--verbose', action='store_true')
+args = cli.parse_args()
+
+USB_DEVICES = '/sys/bus/usb/devices'
+
+for device in os.listdir(USB_DEVICES):
+    try:
+        with open(os.path.join(USB_DEVICES, device, 'interface')) as interface_file:
+            if interface_file.read().strip().lower() == args.interface_name:
+                break
+    except FileNotFoundError:
+        continue
+else:
+    print('BMP not found in USB devices')
+    os.execvp('lsusb', ['lsusb'])
+
+ttys = os.listdir(os.path.join(USB_DEVICES, device, 'tty'))
+if len(ttys) != 1:
+    print(f'Unexpected interfaces in USB device {device!r}: {ttys}')
+    os.execvp('lsusb', ['lsusb'])
+
+tty = os.path.join('/dev', ttys[0])
+print(f'Connecting to {tty}; use `attach 1` to start debugging.')
+if args.gdb_path is not None:
+    gdb_path = args.gdb_path
+else:
+    for candidate in ('gdb-multiarch', 'gdb'):
+        gdb_path = shutil.which(candidate)
+        if gdb_path is not None:
+            break
+    else:
+        cli.error('gdb binary not specified')
+
+invocation = [
+    'gdb', '-q',
+    '-ex', 'python if "arm" not in gdb.architecture_names(): raise SystemExit("no arm support in gdb")',
+    '-ex', f'target extended-remote {tty}',
+    '-ex', 'monitor frequency 1000000',
+    '-ex', 'monitor swdp_scan',
+    'src/build/Heimdall.elf'
+]
+
+if args.verbose:
+    print(' '.join(shlex.quote(arg) for arg in invocation))
+
+os.execv(gdb_path, invocation)

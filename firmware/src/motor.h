@@ -16,8 +16,8 @@ public:
         OutputPin pin_sleep,
         OutputPin pin_direction,
         std::array<OutputPin, 3> pins_modesel,
-        InputPin pin_clockwise_end,
-        InputPin pin_counterclockwise_end
+        OutputPin pin_reset,
+        InputPin pin_fault
     );
 
     ~StepperMotor();
@@ -34,10 +34,8 @@ private:
     OutputPin pin_sleep;
     OutputPin pin_direction;
     std::array<OutputPin, 3> pins_modesel;
-    InputPin pin_clockwise_end;
-    InputPin pin_counterclockwise_end;
-
-    InputPin *endstop_pin = nullptr;
+    OutputPin pin_reset;
+    InputPin pin_fault;
 
     void microstep_modesel(uint8_t microstep_mode);
 

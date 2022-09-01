@@ -7,19 +7,20 @@ StepperMotor::StepperMotor(
     OutputPin pin_sleep,
     OutputPin pin_direction,
     std::array<OutputPin, 3> pins_modesel,
-    InputPin pin_clockwise_end,
-    InputPin pin_counterclockwise_end
+    OutputPin pin_reset,
+    InputPin pin_fault
 ) :
     pin_step{pin_step},
     pin_sleep{pin_sleep},
     pin_direction{pin_direction},
     pins_modesel{pins_modesel},
-    pin_clockwise_end{pin_clockwise_end},
-    pin_counterclockwise_end{pin_counterclockwise_end},
+    pin_reset{pin_reset},
+    pin_fault{pin_fault},
     current_mode{0}
 {
     this->pin_step.low();
     this->pin_sleep.low();
+    this->pin_reset.high();
 }
 
 StepperMotor::~StepperMotor()
@@ -51,10 +52,8 @@ void StepperMotor::set_mode(int8_t mode)
     if (mode < 0) {
         mode *= -1;
         this->pin_direction.low();
-        this->endstop_pin = &this->pin_counterclockwise_end;
     } else {
         this->pin_direction.high();
-        this->endstop_pin = &this->pin_clockwise_end;
     }
 
     this->microsteps_per_step = mode;
@@ -101,7 +100,7 @@ void StepperMotor::rotate(uint32_t urevs, uint32_t urev_per_second) {
 
     Period period_timer(microstep_period_us);
 
-    while (!this->endstop_pin->get())
+    while (1)
     {
         this->pin_step.high();
         sleep_us(this->pin_hold_time_us);

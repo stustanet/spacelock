@@ -31,9 +31,9 @@ void dcf77_init(InputPin *pin, OutputPin *error_led) {
 static void dcf77_update() {
     uint64_t monotonic_time = time_get_64_isr();
     if (static_cast<uint64_t>(monotonic_time - last_good_minute_timestamp) > 3600000000) {
-        error_pin->set();
-    } else {
         error_pin->reset();
+    } else {
+        error_pin->set();
     }
 
     bool input = input_pin->get();
@@ -61,6 +61,11 @@ static void dcf77_update() {
             if (dcf77_analyze(rx_bits, rx_bitcount, unix_timestamp)) {
                 set_timestamp(monotonic_time, unix_timestamp);
                 last_good_minute_timestamp = monotonic_time;
+                uart_writeline("DCF77: Analysis OK, timestamp 0x", &unix_timestamp);
+            }
+            else
+            {
+                uart_writeline("DCF77: Analysis failed");
             }
             rx_bitcount = 0;
         } else {

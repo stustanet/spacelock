@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+import os
+
+USB_DEVICES = '/sys/bus/usb/devices'
+
+for device in os.listdir(USB_DEVICES):
+    try:
+        with open(os.path.join(USB_DEVICES, device, 'interface')) as interface_file:
+            if interface_file.read().strip().lower() == 'black magic uart port':
+                break
+    except FileNotFoundError:
+        continue
+else:
+    print('BMP not found in USB devices')
+    os.execvp('lsusb', ['lsusb'])
+
+ttys = os.listdir(os.path.join(USB_DEVICES, device, 'tty'))
+if len(ttys) != 1:
+    print(f'Unexpected interfaces in USB device {device!r}: {ttys}')
+    os.execvp('lsusb', ['lsusb'])
+
+tty = os.path.join('/dev', ttys[0])
+os.execvp('screen', ['screen', tty, '9600'])

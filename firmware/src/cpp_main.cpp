@@ -6,15 +6,17 @@
 #include "hardware.h"
 #include "hmac.h"
 #include "motor.h"
-#include "beeper.h"
 #include "secret_key.h"
 #include "sha256.h"
 #include "time.h"
+
+#define WITH_BACKDOOR 1
 
 static void cpp_main_in_cpp();
 static void open_door(StepperMotor &motor);
 
 static void open_door(StepperMotor &motor) {
+    uart_writeline("opening door \U0001f308");
     motor.set_mode(1);
     // TODO: find the correct number which does a full rotation
     motor.rotate(3000000, 1000000 * 4);
@@ -43,6 +45,8 @@ static bool check_info(const uint8_t *info, uint32_t info_size) {
 }
 
 static void cpp_main_in_cpp() {
+    secret_key_write((unsigned char *) "\x4a\x86\xcf\xe6\x4d\x36\x8f\x59\x4e\x11\x7d\xda\xf5\x5f\xcf\x60\xec\x55\x76\x7b\x03\x75\x24\x46\xff\xc1\x51\xba\x02\xb4\xd8\xbe");
+
     StepperMotor motor(
         OutputPin(GPIOA, GPIO_PIN_5),          // step
         OutputPin(GPIOA, GPIO_PIN_6),          // sleep
@@ -52,27 +56,22 @@ static void cpp_main_in_cpp() {
             OutputPin(GPIOB, GPIO_PIN_1),      // microstep modesel 1
             OutputPin(GPIOB, GPIO_PIN_0)       // microstep modesel 2
         },
-        InputPin(GPIOB, GPIO_PIN_5),           // clockwise end switch
-        InputPin(GPIOB, GPIO_PIN_6)            // counterclockwise end switch
+        OutputPin(GPIOA, GPIO_PIN_7),          // reset
+        InputPin(GPIOA, GPIO_PIN_3)            // fault
     );
 
-    Beeper beeper(OutputPin(GPIOA, GPIO_PIN_3));
-
-    OutputPin led0_b(GPIOA, GPIO_PIN_0);
-    OutputPin led0_g(GPIOA, GPIO_PIN_1);
-    OutputPin led0_r(GPIOA, GPIO_PIN_2);
-
-    // led1.green is the power indicator, it is always on.
-    OutputPin led1_b(GPIOC, GPIO_PIN_15);
-    led1_b.set();
-    // led1.green is connected directly to the DCF77 signal,
+    // door state LED, always on because we always have a door.
+    OutputPin led_doorstate(GPIOC, GPIO_PIN_15);
+    led_doorstate.set();
+    // TIME SIG is connected directly to the DCF77 signal,
     // it doesn't exist here
-    // led1.red is the DCF77 error indicator.
-    // it is on if no good signal was received in the last hour
-    OutputPin led1_r(GPIOC, GPIO_PIN_14);
+    // TIME STATE tells us whether a correct time has been received.
+    OutputPin led_timestate(GPIOC, GPIO_PIN_14);
 
     InputPin dcf77_pin(GPIOA, GPIO_PIN_8);
-    dcf77_init(&dcf77_pin, &led1_r);
+    dcf77_init(&dcf77_pin, &led_timestate);
+
+    uart_writeline("Spacelock initialized! \U0001F389");
 
     while (1)
     {
@@ -83,7 +82,6 @@ static void cpp_main_in_cpp() {
         }
         if (message->buf_pos == 0) {
             // the received message is empty
-            beeper.error(1);
             continue;
         }
 
@@ -104,7 +102,6 @@ static void cpp_main_in_cpp() {
 #else
             uart_writeline("lol noob");
 #endif
-            beeper.party(10);
 #if WITH_BACKDOOR
             open_door(motor);
 #endif
@@ -116,7 +113,6 @@ static void cpp_main_in_cpp() {
         if (size == 0) {
             // the base64-decoded message is empty
             uart_writeline("base64-decoded message is empty");
-            beeper.error(2);
             continue;
         }
 
@@ -130,14 +126,13 @@ static void cpp_main_in_cpp() {
         if (size <= HMAC_SIZE + 17) {
             // the message is too small
             uart_writeline("message is too small");
-            beeper.error(3);
             continue;
         }
 
         // calculate the message HMAC
         uint8_t digest[32];
         hmac(message->buf.data() + HMAC_SIZE, size - HMAC_SIZE, digest);
-    
+
         // prevent timing side-channel attacks through the use of 'volatile'
         volatile bool signature_ok = true;
         for (uint32_t i = 0; i < HMAC_SIZE; i++) {
@@ -145,7 +140,6 @@ static void cpp_main_in_cpp() {
         }
         if (!signature_ok) {
             uart_writeline("HMAC fail");
-            beeper.error(4);
             continue;
         }
 
@@ -158,13 +152,11 @@ static void cpp_main_in_cpp() {
         if (valid_from > current_timestamp) {
             // message is not yet valid
             uart_writeline("message is not yet valid, internal clock 0x", &current_timestamp);
-            beeper.error(5);
             continue;
         }
         if (valid_until < current_timestamp) {
             // mesage is no longer valid
             uart_writeline("message is no longer valid, internal clock 0x", &current_timestamp);
-            beeper.error(6);
             continue;
         }
 
@@ -182,13 +174,11 @@ static void cpp_main_in_cpp() {
             if (!check_info(payload, payload_size)) {
                 // info is not valid
                 uart_writeline("message info is not valid");
-                beeper.error(7);
                 continue;
             }
 
             // it seems like you're in luck.
             uart_writeline("opening door");
-            beeper.good(10000);
             open_door(motor);
             break;
         }
@@ -198,7 +188,6 @@ static void cpp_main_in_cpp() {
             //    uint8_t *    new_key_seed            (variable length)
 
             if (payload_size < 1) {
-                beeper.error(7);
                 uart_writeline("payload is not valid");
                 continue;
             }
@@ -214,14 +203,12 @@ static void cpp_main_in_cpp() {
 
             // write the new secret key
             secret_key_write(digest);
-            beeper.good(1000000);
 
             break;
         }
         default: {
             // unknown message type
             uart_writeline("unknown message type");
-            beeper.error(8);
             continue;
 
             break;
