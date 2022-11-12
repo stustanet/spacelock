@@ -24,7 +24,13 @@
 
 #ifdef __cplusplus
  extern "C" {
-#endif 
+#endif
+
+
+
+extern volatile int stop_motor_flag;
+
+extern void stop_motor();
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */

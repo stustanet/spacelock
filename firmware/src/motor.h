@@ -1,7 +1,6 @@
 #pragma once
-
-#include <array>
 #include <cmath>
+#include <array>
 
 #include "pin.h"
 

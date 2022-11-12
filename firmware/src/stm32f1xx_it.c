@@ -217,5 +217,25 @@ void USART1_IRQHandler(void)
   }
 }
 
+
+void ADC1_2_IRQHandler(void)
+{
+    static float last_value = 0;
+    uint32_t adc_val = ADC1->DR;
+
+    float new_value = (last_value * 127.0f + adc_val)/128.0f;
+    last_value = new_value;
+    static int i = 0;
+    if(i >= 10){
+        i = 0;
+        uart_write_data(new_value);
+        if(new_value > 500)
+            stop_motor();
+    }
+    i++;
+    /*If continuousconversion mode is DISABLED uncomment below*/
+    //HAL_ADC_Start_IT (&hadc1);
+}
+
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

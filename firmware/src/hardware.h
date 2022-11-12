@@ -106,6 +106,8 @@ void uart_data_received(uint8_t byte);
  */
 void uart_transmit_next();
 
+void uart_write_data(uint16_t data);
+
 #ifdef __cplusplus
 /**
  * Transmits a line on UART.

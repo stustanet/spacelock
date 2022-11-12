@@ -98,6 +98,16 @@ void uart_transmit_next() {
     }
 }
 
+void uart_write_data(uint16_t data){
+    uint8_t a,b;
+    uint8_t mask = 0b11000000;
+    a = mask | (data & ~mask);
+    b = mask | (data >> 6 & ~mask);
+    txbuf.add(a);
+    txbuf.add(b);
+    uart_transmit_next();
+}
+
 void uart_writeline(const char *text, const uint64_t *param) {
     txbuf.add(text);
     if (param != nullptr) {

@@ -1,6 +1,12 @@
 #include "motor.h"
 
 #include "time.h"
+#include "stm32f1xx_it.h"
+
+volatile int stop_motor_flag = 0;
+void stop_motor(){
+    stop_motor_flag = 1;
+}
 
 StepperMotor::StepperMotor(
     OutputPin pin_step,
@@ -99,8 +105,8 @@ void StepperMotor::rotate(uint32_t urevs, uint32_t urev_per_second) {
     if (microstep_period_us < 1) { microstep_period_us = 1; }
 
     Period period_timer(microstep_period_us);
-
-    while (1)
+    stop_motor_flag = 0;
+    while (!stop_motor_flag)
     {
         this->pin_step.high();
         sleep_us(this->pin_hold_time_us);
