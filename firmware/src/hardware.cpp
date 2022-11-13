@@ -168,7 +168,7 @@ UARTRxBuffer *uart_poll_message() {
 #define EDGE_STEEPNESS_THRESHOLD_A_PER_S 5
 #define FALLING_EDGE_HEIGHT_RESET_THRESHOLD_RATIO 4
 #define IT_INTEGRAL_DECAY_UA 300000
-#define IT_INTEGRAL_THRESHOLD_UA_US 50000000000
+#define IT_INTEGRAL_THRESHOLD_UA_US 10000000000
 
 void EndStopDetector::current_received(uint32_t current_uA)
 {
@@ -248,7 +248,7 @@ void EndStopDetector::current_received(uint32_t current_uA)
     }
 
     uart_write_u16((uint16_t)(filtered_current_uA / 1000));
-    uart_write_u16((uint16_t)(edge_start_uA / 1000));
+    uart_write_u16((uint16_t)(it_integral_uA_us / 100000000));
 }
 
 EndStopState EndStopDetector::get_end_stop_state(uint64_t *timestamp)

@@ -16,39 +16,50 @@ static void cpp_main_in_cpp();
 static void open_door(StepperMotor &motor);
 
 #define ENDSTOP_DEAD_WINDOW_USTEPS 10000
-#define ENDSTOP_ROTATE_AFTER_EDGE_USTEPS 250000  // 1/12 revolution of the key
+#define ENDSTOP_ROTATE_AFTER_EDGE_USTEPS 200000 // ? revolution of the key
 
-static void open_door(StepperMotor &motor) {
+static void open_door(StepperMotor &motor)
+{
     // uart_writeline("opening door \U0001f308");
     motor.set_mode(1);
     // TODO: find the correct number which does a full rotation
     uart_writeline("L");
-    auto [end_stop_state, urevs_since_endstop] = motor.rotate(3000000, 1000000 * 4, 200000);
-    if (end_stop_state == EndStopState::RISING_EDGE) {
+    auto [end_stop_state, urevs_since_endstop] = motor.rotate(5000000, 1000000 * 4, 400000);
+    if (end_stop_state == EndStopState::RISING_EDGE)
+    {
         // keep moving for a few extra usteps
         uart_writeline("K");
-        if (urevs_since_endstop < ENDSTOP_ROTATE_AFTER_EDGE_USTEPS) {
-            motor.rotate(ENDSTOP_ROTATE_AFTER_EDGE_USTEPS - urevs_since_endstop, 1000000 * 4, -1);
+        if (urevs_since_endstop < ENDSTOP_ROTATE_AFTER_EDGE_USTEPS)
+        {
+            motor.rotate(ENDSTOP_ROTATE_AFTER_EDGE_USTEPS - urevs_since_endstop, 1000000 * 2, -1);
         }
-    } else {
+    }
+    else
+    {
         uart_writeline("N");
     }
-    sleep_us(3000000);
+
+    motor.set_mode(0);
+     sleep_us(1000000);
     motor.set_mode(-1);
     // TODO: find the correct number which does a quarter or so backrotation
     uart_writeline("B");
-    motor.rotate(2000000, 1000000 * 4, -1);
+    motor.rotate(1000000, 1000000 * 4, -1);
     uart_writeline("BD");
     motor.set_mode(0);
 }
 
-static bool check_info(const uint8_t *info, uint32_t info_size) {
-    if (info_size < 1) {
+static bool check_info(const uint8_t *info, uint32_t info_size)
+{
+    if (info_size < 1)
+    {
         return false;
     }
 
-    while (info_size) {
-        if (*info < 0x20 || *info >= 0x7f) {
+    while (info_size)
+    {
+        if (*info < 0x20 || *info >= 0x7f)
+        {
             // illegal character in info string
             return false;
         }
@@ -59,20 +70,21 @@ static bool check_info(const uint8_t *info, uint32_t info_size) {
     return true;
 }
 
-static void cpp_main_in_cpp() {
-    secret_key_write((unsigned char *) "\x4a\x86\xcf\xe6\x4d\x36\x8f\x59\x4e\x11\x7d\xda\xf5\x5f\xcf\x60\xec\x55\x76\x7b\x03\x75\x24\x46\xff\xc1\x51\xba\x02\xb4\xd8\xbe");
+static void cpp_main_in_cpp()
+{
+    secret_key_write((unsigned char *)"\x4a\x86\xcf\xe6\x4d\x36\x8f\x59\x4e\x11\x7d\xda\xf5\x5f\xcf\x60\xec\x55\x76\x7b\x03\x75\x24\x46\xff\xc1\x51\xba\x02\xb4\xd8\xbe");
 
     StepperMotor motor(
-        OutputPin(GPIOA, GPIO_PIN_5),          // step
-        OutputPin(GPIOA, GPIO_PIN_6),          // sleep
-        OutputPin(GPIOA, GPIO_PIN_4),          // direction
+        OutputPin(GPIOA, GPIO_PIN_5), // step
+        OutputPin(GPIOA, GPIO_PIN_6), // sleep
+        OutputPin(GPIOA, GPIO_PIN_4), // direction
         {
-            OutputPin(GPIOB, GPIO_PIN_10),     // microstep modesel 0
-            OutputPin(GPIOB, GPIO_PIN_1),      // microstep modesel 1
-            OutputPin(GPIOB, GPIO_PIN_0)       // microstep modesel 2
+            OutputPin(GPIOB, GPIO_PIN_10), // microstep modesel 0
+            OutputPin(GPIOB, GPIO_PIN_1),  // microstep modesel 1
+            OutputPin(GPIOB, GPIO_PIN_0)   // microstep modesel 2
         },
-        OutputPin(GPIOA, GPIO_PIN_7),          // reset
-        InputPin(GPIOA, GPIO_PIN_3)            // fault
+        OutputPin(GPIOA, GPIO_PIN_7), // reset
+        InputPin(GPIOA, GPIO_PIN_3)   // fault
     );
 
     // door state LED, always on because we always have a door.
@@ -91,11 +103,13 @@ static void cpp_main_in_cpp() {
     while (1)
     {
         UARTRxBuffer *message = uart_poll_message();
-        if (message == nullptr) {
+        if (message == nullptr)
+        {
             // no new message is ready
             continue;
         }
-        if (message->buf_pos == 0) {
+        if (message->buf_pos == 0)
+        {
             // the received message is empty
             continue;
         }
@@ -109,8 +123,8 @@ static void cpp_main_in_cpp() {
             (message->buf[4] == 'd') &&
             (message->buf[5] == 'o') &&
             (message->buf[6] == 'o') &&
-            (message->buf[7] == 'r')
-        ) {
+            (message->buf[7] == 'r'))
+        {
             // nothing to see here
 #if WITH_BACKDOOR
             // uart_writeline("you used the \x1b[32;1;5msuper-secret\x1b[m backdoor!");
@@ -125,7 +139,8 @@ static void cpp_main_in_cpp() {
 
         // base64-decode the message.
         uint32_t size = base64_decode(message->buf.data(), message->buf_pos);
-        if (size == 0) {
+        if (size == 0)
+        {
             // the base64-decoded message is empty
             uart_writeline("base64-decoded message is empty");
             continue;
@@ -138,7 +153,8 @@ static void cpp_main_in_cpp() {
         //    uint8_t   type
         //    uint8_t   payload[]       (variable length)
 
-        if (size <= HMAC_SIZE + 17) {
+        if (size <= HMAC_SIZE + 17)
+        {
             // the message is too small
             uart_writeline("message is too small");
             continue;
@@ -150,10 +166,12 @@ static void cpp_main_in_cpp() {
 
         // prevent timing side-channel attacks through the use of 'volatile'
         volatile bool signature_ok = true;
-        for (uint32_t i = 0; i < HMAC_SIZE; i++) {
+        for (uint32_t i = 0; i < HMAC_SIZE; i++)
+        {
             signature_ok &= (digest[i] == message->buf[i]);
         }
-        if (!signature_ok) {
+        if (!signature_ok)
+        {
             uart_writeline("HMAC fail");
             continue;
         }
@@ -164,12 +182,14 @@ static void cpp_main_in_cpp() {
 
         uint64_t current_timestamp = get_timestamp();
 
-        if (valid_from > current_timestamp) {
+        if (valid_from > current_timestamp)
+        {
             // message is not yet valid
             uart_writeline("message is not yet valid, internal clock 0x", &current_timestamp);
             continue;
         }
-        if (valid_until < current_timestamp) {
+        if (valid_until < current_timestamp)
+        {
             // mesage is no longer valid
             uart_writeline("message is no longer valid, internal clock 0x", &current_timestamp);
             continue;
@@ -180,13 +200,16 @@ static void cpp_main_in_cpp() {
         uint8_t payload_size = size - HMAC_SIZE - 17;
 
         // the message is valid, do its bidding.
-        switch (message_type) {
-        case 0x01: {
+        switch (message_type)
+        {
+        case 0x01:
+        {
             // an 'open the door' message.
             // payload:
             //    char *    uid             (variable length)
 
-            if (!check_info(payload, payload_size)) {
+            if (!check_info(payload, payload_size))
+            {
                 // info is not valid
                 uart_writeline("message info is not valid");
                 continue;
@@ -197,12 +220,14 @@ static void cpp_main_in_cpp() {
             open_door(motor);
             break;
         }
-        case 0x02: {
+        case 0x02:
+        {
             // an 'new SECRET_KEY' message.
             // payload:
             //    uint8_t *    new_key_seed            (variable length)
 
-            if (payload_size < 1) {
+            if (payload_size < 1)
+            {
                 uart_writeline("payload is not valid");
                 continue;
             }
@@ -221,7 +246,8 @@ static void cpp_main_in_cpp() {
 
             break;
         }
-        default: {
+        default:
+        {
             // unknown message type
             uart_writeline("unknown message type");
             continue;
@@ -232,10 +258,11 @@ static void cpp_main_in_cpp() {
     }
 }
 
-extern "C" {
+extern "C"
+{
 
-void cpp_main() {
-    cpp_main_in_cpp();
-}
-
+    void cpp_main()
+    {
+        cpp_main_in_cpp();
+    }
 }
