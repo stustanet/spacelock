@@ -1,8 +1,10 @@
 #include "hardware.h"
 
+#include <cstdint>
 #include <array>
 
 #include "main.h"
+#include "time.h"
 
 static uint64_t timer_extended_bits = 0;
 
@@ -98,7 +100,7 @@ void uart_transmit_next() {
     }
 }
 
-void uart_write_data(uint16_t data){
+void uart_write_u16(uint16_t data){
     uint8_t a,b;
     uint8_t mask = 0b11000000;
     a = mask | (data & ~mask);
@@ -126,6 +128,27 @@ void uart_writeline(const char *text, const uint64_t *param) {
     uart_transmit_next();
 }
 
+EndStopDetector endstop_detector;
+
+void adc_value_received(uint16_t adc_value) {
+    // This is called at 125 kHz / 7 = 17857 Hz
+    // ADC range 12 bits, reference 3.3V, 1 V/A -> 3.3 / (2**12 - 1) * 1.0 * 1e6
+    uint32_t current_nA = adc_value * 806;
+    endstop_detector.current_received(current_nA);
+
+    // static uint8_t value_counter = 0;
+    // static uint16_t value_sum = 0;
+    // value_sum += adc_value;
+    // value_counter += 1;
+    // // output the ADC values in a compact binary format, for debug purposes
+    // if (value_counter == 10) {
+    //     uart_write_u16((uint16_t)(value_sum / 10));
+
+    //     value_counter = 0;
+    //     value_sum = 0;
+    // }
+}
+
 UARTRxBuffer *uart_poll_message() {
     CriticalSectionLock lk;
 
@@ -139,6 +162,113 @@ UARTRxBuffer *uart_poll_message() {
     current_procbuf = tmp;
 
     return tmp;
+}
+
+#define EDGE_DETECTION_THRESHOLD_UA 210000
+#define EDGE_STEEPNESS_THRESHOLD_A_PER_S 5
+#define FALLING_EDGE_HEIGHT_RESET_THRESHOLD_RATIO 4
+#define IT_INTEGRAL_DECAY_UA 300000
+#define IT_INTEGRAL_THRESHOLD_UA_US 50000000000
+
+void EndStopDetector::current_received(uint32_t current_uA)
+{
+    // currents are coming in at 125 / 7 kHz.
+    // we want to filter them with a time constant of 10 ms
+    // -> alpha = 1/(1-exp(-delta_t/tau)) = 179
+    uint32_t filtered_current_uA_new = (filtered_current_uA * 178 + current_uA)/179;
+    uint32_t filtered_current_timestamp_new = time_get_64_isr();
+    uint32_t delta_t = filtered_current_timestamp_new - filtered_current_timestamp;
+    filtered_current_uA = filtered_current_uA_new;
+    filtered_current_timestamp = filtered_current_timestamp_new;
+
+    it_integral_uA_us += (uint64_t) filtered_current_uA_new * (uint64_t) delta_t;
+    uint64_t it_integral_decay_uA_us = (uint64_t) IT_INTEGRAL_DECAY_UA * (uint64_t) delta_t;
+    if (it_integral_uA_us < it_integral_decay_uA_us) {
+        it_integral_uA_us = 0;
+    } else {
+        it_integral_uA_us -= it_integral_decay_uA_us;
+    }
+    if (it_integral_uA_us > IT_INTEGRAL_THRESHOLD_UA_US) {
+        // it integral threshold reached
+        if (state == EndStopState::NONE) {
+            uart_writeline("i*t limit reached");
+        }
+        it_integral_uA_us = 0;
+        state = EndStopState::OVERCURRENT;
+        end_stop_timestamp = filtered_current_timestamp_new;
+    }
+
+    static uint8_t ctr = 0;
+    if (++ctr == 20) {
+        ctr = 0;
+    } else {
+        return;
+    }
+
+    static uint32_t old_value = 0;
+    filtered_current_uA_old = old_value;
+    old_value = filtered_current_uA;
+
+    if (filtered_current_uA >= edge_start_uA + EDGE_DETECTION_THRESHOLD_UA)
+    {
+        // edge detected
+        if (state == EndStopState::NONE) {
+            uart_writeline("edge detected");
+        }
+        state = EndStopState::RISING_EDGE;
+        end_stop_timestamp = edge_start_timestamp;
+        edge_start_uA = filtered_current_uA;
+        edge_start_timestamp = filtered_current_timestamp;
+        edge_max_uA = filtered_current_uA;
+        return;
+    }
+
+    if (
+        filtered_current_uA - edge_start_uA
+        <=
+        EDGE_STEEPNESS_THRESHOLD_A_PER_S * (filtered_current_timestamp - edge_start_timestamp)
+    ) {
+        // the edge was not steep enough, reset its start to here
+        edge_start_uA = filtered_current_uA;
+        edge_start_timestamp = filtered_current_timestamp;
+        edge_max_uA = filtered_current_uA;
+    }
+
+    if (filtered_current_uA < filtered_current_uA_old) {
+        uint32_t falling_edge_height = edge_max_uA - filtered_current_uA;
+        if (falling_edge_height * FALLING_EDGE_HEIGHT_RESET_THRESHOLD_RATIO > (edge_max_uA - edge_start_uA)) {
+            edge_max_uA = filtered_current_uA;
+            edge_start_uA = filtered_current_uA;
+            edge_start_timestamp = filtered_current_timestamp;
+        }
+    }
+
+    if (filtered_current_uA > edge_max_uA) {
+        edge_max_uA = filtered_current_uA;
+    }
+
+    uart_write_u16((uint16_t)(filtered_current_uA / 1000));
+    uart_write_u16((uint16_t)(edge_start_uA / 1000));
+}
+
+EndStopState EndStopDetector::get_end_stop_state(uint64_t *timestamp)
+{
+    CriticalSectionLock lk;
+    auto result = state;
+
+    if (state != EndStopState::NONE) {
+        *timestamp = end_stop_timestamp;
+        state = EndStopState::NONE;
+    }
+
+    return result;
+}
+
+void EndStopDetector::clear_end_stop_state()
+{
+    CriticalSectionLock lk;
+
+    state = EndStopState::NONE;
 }
 
 int UARTTxBuffer::get_next() {

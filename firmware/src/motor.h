@@ -1,8 +1,10 @@
 #pragma once
 #include <cmath>
 #include <array>
+#include <utility>
 
 #include "pin.h"
+#include "hardware.h"
 
 #ifndef __cplusplus
 #error lolnope
@@ -26,7 +28,11 @@ public:
     static constexpr uint32_t pin_hold_time_us = 2;
 
     void set_mode(int8_t mode);
-    void rotate(uint32_t urevs, uint32_t urev_per_second);
+    // returns a tuple of
+    // (end stop state at end of execution,
+    //  number of steps driven since end stop timestamp).
+    // if the end stop state is NONE, the step number will always be 0.
+    std::pair<EndStopState, uint32_t> rotate(uint32_t urevs, uint32_t urev_per_second, int32_t consider_endstop_after_urev);
 
 private:
     OutputPin pin_step;
@@ -41,4 +47,28 @@ private:
     int8_t current_mode;
 
     uint8_t microsteps_per_step;
+
+    inline uint32_t urev_to_microsteps(uint32_t urev) {
+        return (
+            static_cast<uint64_t>(
+                static_cast<uint64_t>(this->microsteps_per_step)
+                *
+                static_cast<uint64_t>(urev)
+            )
+            /
+            static_cast<uint64_t>(this->urev_per_step)
+        );
+    }
+
+    inline uint32_t microsteps_to_urev(uint32_t microsteps) {
+        return (
+            static_cast<uint64_t>(
+                static_cast<uint64_t>(this->urev_per_step)
+                *
+                static_cast<uint64_t>(microsteps)
+            )
+            /
+            static_cast<uint64_t>(this->microsteps_per_step)
+        );
+    }
 };

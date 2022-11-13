@@ -55,6 +55,43 @@ public:
     bool add(const uint8_t *buf, uint32_t len);
 };
 
+enum class EndStopState : uint8_t {
+    NONE,
+    RISING_EDGE,
+    OVERCURRENT
+};
+
+class EndStopDetector {
+public:
+    void current_received(uint32_t current_uA);
+
+    EndStopState get_end_stop_state(uint64_t *timestamp);
+    void clear_end_stop_state();
+
+private:
+    // the exponentially filtered current
+    uint32_t filtered_current_uA = 0;
+    uint64_t filtered_current_timestamp = 0;
+    // the last filtered current measurement;
+    // we remember this for measuring the curve development
+    uint32_t filtered_current_uA_old = 0;
+
+    // current edge start
+    uint32_t edge_start_uA = 0;
+    uint64_t edge_start_timestamp = 0;
+    // highest max value that we have seen since we started
+    // tracking this edge
+    uint32_t edge_max_uA = 0;
+
+    // integral of the current
+    uint64_t it_integral_uA_us = 0;
+
+    EndStopState state = EndStopState::NONE;
+    uint64_t end_stop_timestamp = 0;
+};
+
+extern EndStopDetector endstop_detector;
+
 /**
  * Returns nullptr if no new message has been received.
  * Returns UARTRxBuffer containing a message if a new message has been
@@ -114,6 +151,11 @@ void uart_write_data(uint16_t data);
  */
 void uart_writeline(const char *text, const uint64_t *param=nullptr);
 #endif
+
+/**
+ * Called by the ADC interrupt handler whenever a conversion is complete.
+*/
+void adc_value_received(uint16_t value);
 
 #ifdef __cplusplus
 }

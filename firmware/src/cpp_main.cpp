@@ -15,15 +15,30 @@
 static void cpp_main_in_cpp();
 static void open_door(StepperMotor &motor);
 
+#define ENDSTOP_DEAD_WINDOW_USTEPS 10000
+#define ENDSTOP_ROTATE_AFTER_EDGE_USTEPS 250000  // 1/12 revolution of the key
+
 static void open_door(StepperMotor &motor) {
-    uart_writeline("opening door \U0001f308");
+    // uart_writeline("opening door \U0001f308");
     motor.set_mode(1);
     // TODO: find the correct number which does a full rotation
-    motor.rotate(3000000, 1000000 * 4);
+    uart_writeline("L");
+    auto [end_stop_state, urevs_since_endstop] = motor.rotate(3000000, 1000000 * 4, 200000);
+    if (end_stop_state == EndStopState::RISING_EDGE) {
+        // keep moving for a few extra usteps
+        uart_writeline("K");
+        if (urevs_since_endstop < ENDSTOP_ROTATE_AFTER_EDGE_USTEPS) {
+            motor.rotate(ENDSTOP_ROTATE_AFTER_EDGE_USTEPS - urevs_since_endstop, 1000000 * 4, -1);
+        }
+    } else {
+        uart_writeline("N");
+    }
     sleep_us(3000000);
     motor.set_mode(-1);
     // TODO: find the correct number which does a quarter or so backrotation
-    motor.rotate(2000000, 1000000 * 4);
+    uart_writeline("B");
+    motor.rotate(2000000, 1000000 * 4, -1);
+    uart_writeline("BD");
     motor.set_mode(0);
 }
 
@@ -98,7 +113,7 @@ static void cpp_main_in_cpp() {
         ) {
             // nothing to see here
 #if WITH_BACKDOOR
-            uart_writeline("you used the \x1b[32;1;5msuper-secret\x1b[m backdoor!");
+            // uart_writeline("you used the \x1b[32;1;5msuper-secret\x1b[m backdoor!");
 #else
             uart_writeline("lol noob");
 #endif

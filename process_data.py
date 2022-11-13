@@ -42,7 +42,7 @@ else:
     outfile = None
 
 def convert_ticks_to_volts(ticks):
-    return ticks/2**12 * 3.3
+    return ticks/1000 # 2**12 * 3.3
 
 def convert_to_amps(volts):
     # we measure half because of averaging of isensa and isensb thus *2
@@ -55,11 +55,13 @@ while True:
     next_byte = port.read(1)
     if (next_byte[0] & 0b11000000 == 0b11000000):
         rxbin.append(next_byte[0] & 0b00111111)
-        if len(rxbin) == 2:
-            rxdata = rxbin[0] | (rxbin[1] << 6)
+        if len(rxbin) == 4:
+            rxdata0 = rxbin[0] | (rxbin[1] << 6)
+            rxdata1 = rxbin[2] | (rxbin[3] << 6)
             if outfile is not None:
-                data = convert_to_amps(convert_ticks_to_volts(rxdata))
-                outfile.write(f'{time.monotonic()},{data}\n')
+                data0 = convert_to_amps(convert_ticks_to_volts(rxdata0))
+                data1 = convert_to_amps(convert_ticks_to_volts(rxdata1))
+                outfile.write(f'{time.monotonic()},{data0},{data1}\n')
                 outfile.flush()
             rxbin.clear()
     else:
