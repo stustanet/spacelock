@@ -20,4 +20,4 @@ if len(ttys) != 1:
     os.execvp('lsusb', ['lsusb'])
 
 tty = os.path.join('/dev', ttys[0])
-os.execvp('screen', ['screen', tty, '9600'])
+os.execvp('screen', ['screen', tty, '115200'])
