@@ -73,7 +73,7 @@ def _exec_query(query, *params, fetchall=False):
                 return cursor.fetchall()
         except psycopg2.Error as e:
             database.rollback()
-            print(f'Postgres Error: {e}')
+            print(f'Postgres Error: {e}', flush=True)
             return None
 
 
