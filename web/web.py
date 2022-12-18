@@ -30,6 +30,9 @@ app.secret_key = settings.SECRET_KEY
 
 QRcode(app)
 csrf = CSRFProtect(app)
+# https://flask-wtf.readthedocs.io/en/0.15.x/config/
+# csrf-token lifetime bound to session lifetime
+app.config['WTF_CSRF_TIME_LIMIT'] = None
 
 login_manager = LoginManager()
 login_manager.init_app(app)
