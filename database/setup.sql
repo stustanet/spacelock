@@ -3,8 +3,8 @@
 -- creates access tokens, returned by function `gen_token(accesskey)`
 --
 -- (c) 2019 Wolfgang Walter <wolfgang.walter@stusta.net>
--- (c) 2019 Michael Enßlin <mic@sft.mx>
--- (c) 2019 Jonas Jelten <jj@sft.mx>
+-- (c) 2019 Michael Enßlin <mic@sft.lol>
+-- (c) 2019-2023 Jonas Jelten <jj@sft.lol>
 --
 -- setup steps:
 -- * create a new user with `user_add()` and note down the request id and password
@@ -214,7 +214,7 @@ create or replace function gen_message(
 	msg_type access_class,
 	payload text
 )
-returns text as $$
+returns json as $$
 declare entry permissions%ROWTYPE;
 declare entry_id bigint;
 declare now_time timestamp with time zone;
@@ -259,7 +259,10 @@ begin
 		format('emit %s: %s', msg_type, token)
 	);
 
-	return token;
+	return json_build_object(
+		'token', token,
+		'valid_until', now_time + make_interval(secs => token_duration)
+	);
 end;
 $$ language plpgsql
 security definer;
@@ -269,7 +272,7 @@ security definer;
 create or replace function gen_token(
 	permission_key text
 )
-returns text as $$
+returns json as $$
 declare entry_id bigint;
 declare entry permissions%ROWTYPE;
 begin
@@ -294,7 +297,7 @@ security definer;
 create or replace function gen_keyupdate(
 	permission_key text
 )
-returns text as $$
+returns json as $$
 declare new_key text;
 begin
 	select keygen() into new_key;

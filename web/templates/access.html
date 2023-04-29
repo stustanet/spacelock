@@ -18,6 +18,9 @@
           <img src="{{ qrcode(token, border=1) }}" class="img-fluid" alt="{{ token }}">
         </div>
         <div class="pt-3 text-center">
+            Valid until: {{ valid_until }}
+        </div>
+        <div class="pt-3 text-center">
           <a href="{{ token_url }}" target="_blank">Send directly via WIFI</a>
         </div>
         <div class="pt-3 text-center">

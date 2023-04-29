@@ -63,7 +63,7 @@ def api_token():
             token = gen_token(jsn['key'])
             if token is not None:
                 return app.response_class(
-                    response=json.dumps({'token': token}),
+                    response=json.dumps({'token': token['token']}),
                     status=200,
                     mimetype='application/json'
                 )
@@ -228,8 +228,8 @@ class ChangeSigningKeyView(MethodView):
             return redirect(url_for('advanced'))
 
         data = {
-            'token': token,
-            'token_url': settings.WIFI_SEND_URL + token
+            'token': token['token'],
+            'token_url': settings.WIFI_SEND_URL + token['token']
         }
 
         return self.render(data)
@@ -264,11 +264,12 @@ def index():
         expires_soon = None
         valid_to = get_valid_to(request.form.get('secret_key'))
         if valid_to - datetime.now(settings.TIMEZONE) < timedelta(weeks=2):
-            expires_soon = valid_to.astimezone(settings.TIMEZONE) 
+            expires_soon = valid_to.astimezone(settings.TIMEZONE)
 
         data = {
-            'token': token,
-            'token_url': settings.WIFI_SEND_URL + token,
+            'token': token['token'],
+            'token_url': settings.WIFI_SEND_URL + token['token'],
+            'valid_until': token['valid_until'],
             'expires_soon': expires_soon,
         }
 
