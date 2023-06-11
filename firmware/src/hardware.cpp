@@ -176,7 +176,7 @@ void EndStopDetector::current_received(uint32_t current_uA)
     // we want to filter them with a time constant of 10 ms
     // -> alpha = 1/(1-exp(-delta_t/tau)) = 179
     uint32_t filtered_current_uA_new = (filtered_current_uA * 178 + current_uA)/179;
-    uint32_t filtered_current_timestamp_new = time_get_64_isr();
+    uint64_t filtered_current_timestamp_new = time_get_64_isr();
     uint32_t delta_t = filtered_current_timestamp_new - filtered_current_timestamp;
     filtered_current_uA = filtered_current_uA_new;
     filtered_current_timestamp = filtered_current_timestamp_new;
