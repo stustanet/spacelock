@@ -12,7 +12,6 @@ cli.add_argument('--baud-rate', type=int, default=115200)
 cli.add_argument('--out-file')
 args = cli.parse_args()
 
-print(args.serial_port)
 if args.serial_port is None:
     # auto-determine from lsusb
     USB_DEVICES = '/sys/bus/usb/devices'
@@ -48,6 +47,7 @@ def convert_to_amps(volts):
     # we measure half because of averaging of isensa and isensb thus *2
     return volts*10/20*2
 
+print(f'{args.serial_port} @ {args.baud_rate}')
 
 port = serial.Serial(args.serial_port,args.baud_rate)
 rxbin = []
