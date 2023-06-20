@@ -10,7 +10,7 @@
 #include "sha256.h"
 #include "time.h"
 
-#define WITH_BACKDOOR 1
+#define WITH_BACKDOOR 0
 
 static void cpp_main_in_cpp();
 static void open_door(StepperMotor &motor);
@@ -72,8 +72,6 @@ static bool check_info(const uint8_t *info, uint32_t info_size)
 
 static void cpp_main_in_cpp()
 {
-    secret_key_write((unsigned char *)"\x4a\x86\xcf\xe6\x4d\x36\x8f\x59\x4e\x11\x7d\xda\xf5\x5f\xcf\x60\xec\x55\x76\x7b\x03\x75\x24\x46\xff\xc1\x51\xba\x02\xb4\xd8\xbe");
-
     StepperMotor motor(
         OutputPin(GPIOA, GPIO_PIN_5), // step
         OutputPin(GPIOA, GPIO_PIN_6), // sleep
@@ -127,7 +125,7 @@ static void cpp_main_in_cpp()
         {
             // nothing to see here
 #if WITH_BACKDOOR
-            // uart_writeline("you used the \x1b[32;1;5msuper-secret\x1b[m backdoor!");
+            uart_writeline("you used the \x1b[32;1;5msuper-secret\x1b[m backdoor!");
 #else
             uart_writeline("lol noob");
 #endif
