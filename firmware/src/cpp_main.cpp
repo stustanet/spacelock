@@ -70,6 +70,17 @@ static bool check_info(const uint8_t *info, uint32_t info_size)
     return true;
 }
 
+/**
+ * This function is not used in the code.
+ * It exists so that it can be comfortably called
+ * from a gdb session in order to reset the key to a known state.
+ */
+__attribute__((used))
+void reset_secret_key()
+{
+    secret_key_write((unsigned char *)"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+}
+
 static void cpp_main_in_cpp()
 {
     StepperMotor motor(
