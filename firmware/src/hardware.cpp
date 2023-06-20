@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <array>
 
+#include "config.h"
 #include "main.h"
 #include "time.h"
 
@@ -163,12 +164,6 @@ UARTRxBuffer *uart_poll_message() {
 
     return tmp;
 }
-
-#define EDGE_DETECTION_THRESHOLD_UA 210000
-#define EDGE_STEEPNESS_THRESHOLD_A_PER_S 5
-#define FALLING_EDGE_HEIGHT_RESET_THRESHOLD_RATIO 4
-#define IT_INTEGRAL_DECAY_UA 300000
-#define IT_INTEGRAL_THRESHOLD_UA_US 10000000000
 
 void EndStopDetector::current_received(uint32_t current_uA)
 {

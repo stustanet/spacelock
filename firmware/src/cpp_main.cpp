@@ -1,6 +1,7 @@
 #include "stm32f1xx_hal.h"
 
 #include "base64.h"
+#include "config.h"
 #include "dcf77.h"
 #include "deserialize.h"
 #include "hardware.h"
@@ -10,13 +11,8 @@
 #include "sha256.h"
 #include "time.h"
 
-#define WITH_BACKDOOR 0
-
 static void cpp_main_in_cpp();
 static void open_door(StepperMotor &motor);
-
-#define ENDSTOP_DEAD_WINDOW_USTEPS 10000
-#define ENDSTOP_ROTATE_AFTER_EDGE_USTEPS 200000 // ? revolution of the key
 
 static void open_door(StepperMotor &motor)
 {
