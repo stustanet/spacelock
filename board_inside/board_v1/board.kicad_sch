@@ -4738,7 +4738,7 @@
     (uuid ffd6777f-f50e-4a90-88fd-eb4cc114de2a)
   )
 
-  (text "Measures the combined current of the motor phases.\nOutput MOT_CURRENT = (abs(I(AOUT1)) + abs(I(AOUT2))) * 2V/A.\nThe current is directly proprtional to the torque.\nEndstop reached if > 600mV >= 20ms"
+  (text "Measures the combined current of the motor phases.\nOutput MOT_CURRENT = (abs(I(AOUT1)) + abs(I(AOUT2))) * 1V/A.\nThe current is directly proprtional to the torque.\nEndstop reached if > 600mV >= 20ms"
     (at 203.2 172.72 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 063f2834-f474-4a87-9b50-b92b9805ef19)
