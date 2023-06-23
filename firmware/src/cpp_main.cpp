@@ -12,38 +12,80 @@
 #include "time.h"
 
 static void cpp_main_in_cpp();
-static void open_door(StepperMotor &motor);
+static void current_controlled_open(StepperMotor &motor);
+static void forced_open(StepperMotor &motor);
+static void lock_door(StepperMotor &motor);
+static void advanced_door_unlocking(StepperMotor &motor, InputPin & door_state);
 
-static void open_door(StepperMotor &motor)
+static void current_controlled_open(StepperMotor &motor)
 {
     // uart_writeline("opening door \U0001f308");
     motor.set_mode(1);
-    // TODO: find the correct number which does a full rotation
-    uart_writeline("L");
-    auto [end_stop_state, urevs_since_endstop] = motor.rotate(5000000, 1000000 * 4, 400000);
+    
+    auto [end_stop_state, urevs_since_endstop] = motor.rotate(UNLOCKING_UREVS, UNLOCK_SPEED_UREVS_PER_SEC, ENDSTOP_DEAD_WINDOW_UREVS);
     if (end_stop_state == EndStopState::RISING_EDGE)
     {
         // keep moving for a few extra usteps
-        uart_writeline("K");
+        motor.set_mode(32);
+        // keep moving for a few extra usteps
         if (urevs_since_endstop < ENDSTOP_ROTATE_AFTER_EDGE_USTEPS)
         {
-            motor.rotate(ENDSTOP_ROTATE_AFTER_EDGE_USTEPS - urevs_since_endstop, 1000000 * 2, -1);
+            motor.rotate(ENDSTOP_ROTATE_AFTER_EDGE_USTEPS - urevs_since_endstop, UNLOCK_FINAL_SPEED_UREVS_PER_SEC, -1);
         }
     }
     else
     {
-        uart_writeline("N");
+        uart_writeline("over current detected");
     }
 
     motor.set_mode(0);
-     sleep_us(1000000);
+    sleep_us(UNLOCK_HOLD_DELAY_US);
+
+    // back up a little bit
     motor.set_mode(-1);
-    // TODO: find the correct number which does a quarter or so backrotation
-    uart_writeline("B");
-    motor.rotate(1000000, 1000000 * 4, -1);
-    uart_writeline("BD");
+    motor.rotate(UNLOCK_BACKING_UREVS, UNLOCK_SPEED_UREVS_PER_SEC, -1);
     motor.set_mode(0);
 }
+
+static void forced_open(StepperMotor &motor){
+
+
+    // try to open the door by force
+    motor.set_mode(1);
+    motor.rotate(FORCE_UNLOCK_UREVS, UNLOCK_SPEED_UREVS_PER_SEC, -1);
+    motor.set_mode(32);
+    motor.rotate(ENDSTOP_ROTATE_AFTER_EDGE_USTEPS*2, UNLOCK_FINAL_SPEED_UREVS_PER_SEC, -1);
+    motor.set_mode(0);
+    sleep_us(UNLOCK_HOLD_DELAY_US);
+    motor.set_mode(-1);
+    motor.rotate(UNLOCK_BACKING_UREVS, UNLOCK_SPEED_UREVS_PER_SEC, -1);
+    motor.set_mode(0);
+}
+
+static void lock_door(StepperMotor &motor){
+    //rotate backwards
+    motor.set_mode(-1);
+
+    motor.rotate(LOCKING_UREVS, LOCKING_SPEED_UREVS_PER_SEC, 2*ENDSTOP_DEAD_WINDOW_UREVS);
+    uart_writeline("locking door");
+    motor.set_mode(0);
+}
+
+/*
+ * This function retries opening, if a door sensor is installed.
+ * It checks if the door is opened and if not it tries again.
+ */
+static void advanced_door_unlocking(StepperMotor &motor, InputPin & door_state){
+    uart_writeline("opening door");
+    
+    // try opening 3 times
+    for(int i = 0;i<3 && door_state.get() != DOOR_OPEN_STATE;i++){
+        current_controlled_open(motor);
+    }
+
+    forced_open(motor); // ignore endstop
+}
+
 
 static bool check_info(const uint8_t *info, uint32_t info_size)
 {
@@ -95,6 +137,8 @@ static void cpp_main_in_cpp()
     // door state LED, always on because we always have a door.
     OutputPin led_doorstate(GPIOC, GPIO_PIN_15);
     led_doorstate.set();
+
+#if WITH_QRCODE
     // TIME SIG is connected directly to the DCF77 signal,
     // it doesn't exist here
     // TIME STATE tells us whether a correct time has been received.
@@ -102,11 +146,49 @@ static void cpp_main_in_cpp()
 
     InputPin dcf77_pin(GPIOA, GPIO_PIN_8);
     dcf77_init(&dcf77_pin, &led_timestate);
+#endif // WITH_QRCODE
+
+#if WITH_DOOR_SENSOR
+    InputPin door_state(DOOR_PORT, DOOR_PIN);
+    bool lock_armed = false;
+    uint32_t lock_counter = 0;
+    uint64_t lock_target_time = 0;
+    bool old_door_state = door_state.get();
+#endif // WITH_DOOR_SENSOR
 
     uart_writeline("Spacelock initialized! \U0001F389");
 
     while (1)
     {
+#if WITH_DOOR_SENSOR
+        if (door_state.get() == DOOR_OPEN_STATE)
+        {
+            // door is open
+            led_doorstate.set();
+            lock_armed = true;
+            lock_target_time = time_get_64_isr();
+            if(old_door_state != DOOR_OPEN_STATE){
+                old_door_state = DOOR_OPEN_STATE;
+                uart_writeline("xxxOpenxxx");
+            }
+        }
+        else
+        {
+            // door is closed
+            led_doorstate.reset();
+            if (lock_armed && (time_get_64_isr() > LOCK_DELAY + lock_target_time))
+            {
+                uint64_t val = time_get_64_isr();
+                lock_door(motor);
+                lock_armed = false;
+            }
+            if(old_door_state == DOOR_OPEN_STATE){
+                old_door_state = !DOOR_OPEN_STATE;
+                uart_writeline("xxxClosexxx");
+            }
+        }
+#endif // WITH_DOOR_SENSOR
+
         UARTRxBuffer *message = uart_poll_message();
         if (message == nullptr)
         {
@@ -121,27 +203,27 @@ static void cpp_main_in_cpp()
 
         // super-secret backdoor. don't tell anybody.
         if (
-            (message->buf[0] == 'b') &&
-            (message->buf[1] == 'a') &&
-            (message->buf[2] == 'c') &&
-            (message->buf[3] == 'k') &&
-            (message->buf[4] == 'd') &&
-            (message->buf[5] == 'o') &&
-            (message->buf[6] == 'o') &&
-            (message->buf[7] == 'r'))
+            (message->buf[0] == 'o') &&
+            (message->buf[1] == 'p') &&
+            (message->buf[2] == 'e') &&
+            (message->buf[3] == 'n'))
         {
             // nothing to see here
 #if WITH_BACKDOOR
-            uart_writeline("you used the \x1b[32;1;5msuper-secret\x1b[m backdoor!");
+            uart_writeline("requested opening on UART");
+
+    #if WITH_DOOR_SENSOR
+            advanced_door_unlocking(motor, door_state);
+    #else
+            current_controlled_open(motor);
+    #endif
 #else
-            uart_writeline("lol noob");
-#endif
-#if WITH_BACKDOOR
-            open_door(motor);
+            uart_writeline("backdoor disabled");
 #endif
             continue;
         }
 
+#if WITH_QRCODE
         // base64-decode the message.
         uint32_t size = base64_decode(message->buf.data(), message->buf_pos);
         if (size == 0)
@@ -222,7 +304,11 @@ static void cpp_main_in_cpp()
 
             // it seems like you're in luck.
             uart_writeline("opening door");
-            open_door(motor);
+    #if WITH_DOOR_SENSOR
+            advanced_door_unlocking(motor, door_state);
+    #else
+            current_controlled_open(motor);
+    #endif
             break;
         }
         case 0x02:
@@ -260,6 +346,7 @@ static void cpp_main_in_cpp()
             break;
         }
         }
+#endif // WITH_QRCODE
     }
 }
 
