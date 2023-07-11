@@ -83,19 +83,7 @@ std::pair<EndStopState, uint32_t> StepperMotor::rotate(uint32_t urevs, uint32_t 
 
     if (microsteps == 0) { return { EndStopState::NONE, 0}; }
 
-    uint32_t microstep_period_us = (
-        static_cast<uint64_t>(
-            static_cast<uint64_t>(1000000)
-            *
-            static_cast<uint64_t>(this->urev_per_step)
-        )
-        /
-        static_cast<uint64_t>(
-            static_cast<uint64_t>(this->microsteps_per_step)
-            *
-            static_cast<uint64_t>(urev_per_second)
-        )
-    );
+    uint32_t microstep_period_us = urev_per_second_to_microstep_period_us(urev_per_second);
 
     if (microstep_period_us < 1) { microstep_period_us = 1; }
 
