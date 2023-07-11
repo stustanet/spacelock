@@ -17,9 +17,14 @@ static void forced_open(StepperMotor &motor);
 static void lock_door(StepperMotor &motor);
 static void advanced_door_unlocking(StepperMotor &motor, InputPin & door_state);
 
+/*
+ * Move the key until a resistance is found. This indicates that the door is about to unlock. 
+ * The resistance is detected by a rising edge in the motor current.
+ * After the resistance is detected, the motor is moved a little bit further to ensure that the door is unlocked.
+ * After a short holding time, the key is moved back to ensure proper closing.
+ */
 static void current_controlled_open(StepperMotor &motor)
 {
-    // uart_writeline("opening door \U0001f308");
     motor.set_mode(1);
     
     auto [end_stop_state, urevs_since_endstop] = motor.rotate(UNLOCKING_UREVS, UNLOCK_SPEED_UREVS_PER_SEC, ENDSTOP_DEAD_WINDOW_UREVS);
@@ -27,10 +32,9 @@ static void current_controlled_open(StepperMotor &motor)
     {
         // keep moving for a few extra usteps
         motor.set_mode(32);
-        // keep moving for a few extra usteps
-        if (urevs_since_endstop < ENDSTOP_ROTATE_AFTER_EDGE_USTEPS)
+        if (urevs_since_endstop < ENDSTOP_ROTATE_AFTER_EDGE_UREVS)
         {
-            motor.rotate(ENDSTOP_ROTATE_AFTER_EDGE_USTEPS - urevs_since_endstop, UNLOCK_FINAL_SPEED_UREVS_PER_SEC, -1);
+            motor.rotate(ENDSTOP_ROTATE_AFTER_EDGE_UREVS - urevs_since_endstop, UNLOCK_FINAL_SPEED_UREVS_PER_SEC, -1);
         }
     }
     else
@@ -47,14 +51,16 @@ static void current_controlled_open(StepperMotor &motor)
     motor.set_mode(0);
 }
 
+/*
+ * This routine unlocks the door by brute force, moving the motor far enough, that the door is for sure unlocked.
+ * If this is used rarely, it shouldn't be to hard on the mechanics, as the motor is not strong enough to break anything.
+ */
 static void forced_open(StepperMotor &motor){
-
-
     // try to open the door by force
     motor.set_mode(1);
     motor.rotate(FORCE_UNLOCK_UREVS, UNLOCK_SPEED_UREVS_PER_SEC, -1);
     motor.set_mode(32);
-    motor.rotate(ENDSTOP_ROTATE_AFTER_EDGE_USTEPS*2, UNLOCK_FINAL_SPEED_UREVS_PER_SEC, -1);
+    motor.rotate(ENDSTOP_ROTATE_AFTER_EDGE_UREVS*2, UNLOCK_FINAL_SPEED_UREVS_PER_SEC, -1);
     motor.set_mode(0);
     sleep_us(UNLOCK_HOLD_DELAY_US);
     motor.set_mode(-1);
@@ -161,6 +167,7 @@ static void cpp_main_in_cpp()
     while (1)
     {
 #if WITH_DOOR_SENSOR
+        // if the door is closed for at least LOCK_DELAY, the door is automatically locked
         if (door_state.get() == DOOR_OPEN_STATE)
         {
             // door is open

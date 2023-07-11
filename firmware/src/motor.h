@@ -27,7 +27,7 @@ public:
     static constexpr uint32_t urev_per_step = UREV_PER_STEP;
     static constexpr uint32_t sleep_wakeup_time_us = 1700;
     static constexpr uint32_t pin_hold_time_us = 2;
-    static constexpr uint32_t motor_revs_to_decikey_revs = MOTOR_REVS_TO_DECIKEY_REVS; 
+    static constexpr uint32_t motor_revs_to_ukey_revs = MOTOR_REVS_TO_UKEY_REVS; 
 
     void set_mode(int8_t mode);
     // returns a tuple of
@@ -57,9 +57,9 @@ private:
                 *
                 static_cast<uint64_t>(urev)
                 *
-                static_cast<uint64_t>(motor_revs_to_decikey_revs)
+                static_cast<uint64_t>(motor_revs_to_ukey_revs)
                 /
-                10
+                1'000'000
             )
             /
             static_cast<uint64_t>(this->urev_per_step)
@@ -73,9 +73,9 @@ private:
                 *
                 static_cast<uint64_t>(microsteps)
                 *
-                10
+                1'000'000
                 /
-                static_cast<uint64_t>(motor_revs_to_decikey_revs)
+                static_cast<uint64_t>(motor_revs_to_ukey_revs)
             )
             /
             static_cast<uint64_t>(this->microsteps_per_step)
@@ -95,9 +95,9 @@ private:
                 *
                 static_cast<uint64_t>(urev_per_second)
                 *
-                static_cast<uint64_t>(motor_revs_to_decikey_revs)
+                static_cast<uint64_t>(motor_revs_to_ukey_revs)
                 /
-                10
+                1'000'000
             )
         );
     }

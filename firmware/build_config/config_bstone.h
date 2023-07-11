@@ -23,11 +23,8 @@
 #define UNLOCK_FINAL_SPEED_UREVS_PER_SEC 500'000
 #define UNLOCK_HOLD_DELAY_US 1'000'000
 #define UNLOCK_BACKING_UREVS 250'000 //quarter rotation of the key
-#define ENDSTOP_ROTATE_AFTER_EDGE_USTEPS 25'000 // how many microsteps to rotate after endstop detection (revolution of key)
+#define ENDSTOP_ROTATE_AFTER_EDGE_UREVS 25'000 // how many microsteps to rotate after endstop detection (revolution of key)
 #define FORCE_UNLOCK_UREVS 150'000
-
-// unlocking with door sensor
-#define OPEN_RETRY_DELAY_US 100'000
 
 // parameters for endstop: edge detection, it integral... read the code (hardware.h)!
 #define EDGE_DETECTION_THRESHOLD_UA 210000
@@ -38,5 +35,5 @@
 
 // motor parameters
 #define ENDSTOP_DEAD_WINDOW_UREVS 100'000
-#define MOTOR_REVS_TO_DECIKEY_REVS 4 // actually 4,0 but we divide later in the code
-#define UREV_PER_STEP (uint32_t)(1000000 / 200) // 200 steps per revolution
+#define MOTOR_REVS_TO_UKEY_REVS 4'000'000 // actually 4,0 but we divide later in the code
+#define UREV_PER_STEP (uint32_t)(1'000'000 / 200) // 200 steps per revolution
