@@ -1,0 +1,3 @@
+- debug footprint placement is bad (cannot reach it from the side) - fixed by markush 2024-01-21
+- dcf77 connector must be configurable - don't care
+- we require potentiometer for the DRV8825's vref - fixed by markush 2024-01-21
