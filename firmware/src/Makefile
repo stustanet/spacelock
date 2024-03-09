@@ -54,7 +54,9 @@ Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_pwr.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash_ex.c \
-system_stm32f1xx.c
+system_stm32f1xx.c \
+monocypher.c \
+monocypher-ed25519.c
 
 CPP_SOURCES = \
 beeper.cpp \
@@ -64,13 +66,12 @@ dcf77_analyze.cpp \
 deserialize.cpp \
 gregorian_calendar.cpp \
 hardware.cpp \
-hmac.cpp \
 interrupts.cpp \
 motor.cpp \
 pin.cpp \
-secret_key.cpp \
-sha256.cpp \
-time.cpp
+time.cpp \
+utf8.cpp \
+key_storage.cpp
 
 # ASM sources
 ASM_SOURCES =  \

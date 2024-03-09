@@ -1,0 +1,22 @@
+#pragma once
+
+#include <cstdint>
+
+#define MAX_KEY_SLOTS 24
+
+typedef struct {
+    uint32_t system_id;
+    uint32_t key_id;
+    uint32_t door_id;
+    uint32_t key_type;
+    uint8_t key[32];
+} PubKey_T;
+
+extern uint32_t owner_system_id;
+extern uint32_t owner_door_id;
+extern PubKey_T keystore[MAX_KEY_SLOTS];
+
+uint8_t get_key_index(uint32_t system_id, uint32_t key_id, uint32_t key_type);
+
+
+

@@ -7,9 +7,14 @@
 #include "hardware.h"
 #include "hmac.h"
 #include "motor.h"
-#include "secret_key.h"
+#include "key_storage.h"
 #include "sha256.h"
 #include "time.h"
+#include "monocypher-ed25519.h"
+#include "utf8.h"
+
+#include <cstring>
+
 
 static void cpp_main_in_cpp();
 static void open_door(StepperMotor &motor);
@@ -74,7 +79,7 @@ static bool check_info(const uint8_t *info, uint32_t info_size)
 __attribute__((used))
 void reset_secret_key()
 {
-    secret_key_write((unsigned char *)"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+    //secret_key_write((unsigned char *)"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
 }
 
 static void cpp_main_in_cpp()
@@ -151,74 +156,130 @@ static void cpp_main_in_cpp()
             continue;
         }
 
-        // all messages have the following format:
-        //    uint8_t   hmac_signature[HMAC_SIZE]
-        //    uint64_t  valid_from
-        //    uint64_t  valid_until
-        //    uint8_t   type
-        //    uint8_t   payload[]       (variable length)
+	//parse message
 
-        if (size <= HMAC_SIZE + 17)
+        // all messages have the following format:
+        //    uint8_t   signature[64]
+        //    uint32_t  valid_from (unixtime/60)
+        //    uint16_t  minutes_valid
+        //    1char utf-8   system_id
+        //    1char utf-8   key_id
+        //    1char utf-8   msg_type
+	//
+        //    uint8_t   payload[]       (variable length)
+	//
+#define SYSTEM_ID_OFFSET SIG_SIZE+6
+
+        if (size <= SIG_SIZE + 9) //TODO adapt for ed25519
         {
             // the message is too small
             uart_writeline("message is too small");
             continue;
         }
 
-        // calculate the message HMAC
-        uint8_t digest[32];
-        hmac(message->buf.data() + HMAC_SIZE, size - HMAC_SIZE, digest);
 
-        // prevent timing side-channel attacks through the use of 'volatile'
-        volatile bool signature_ok = true;
-        for (uint32_t i = 0; i < HMAC_SIZE; i++)
-        {
-            signature_ok &= (digest[i] == message->buf[i]);
-        }
-        if (!signature_ok)
-        {
-            uart_writeline("HMAC fail");
-            continue;
-        }
+	//check signature
 
-        // see if the timestamp is valid.
-        uint64_t valid_from = deserialize_u64(&message->buf[HMAC_SIZE]);
-        uint64_t valid_until = deserialize_u64(&message->buf[HMAC_SIZE + 8]);
 
-        uint64_t current_timestamp = get_timestamp();
+	//get the signature key
+	uint16_t offset = SYSTEM_ID_OFFSET;
+	
+	uint32_t system_id = deserialize_utf8(message->buf.data(), &offset, 1);
+	uint32_t key_id = deserialize_utf8(message->buf.data(), &offset, 1);
 
-        if (valid_from > current_timestamp)
-        {
-            // message is not yet valid
-            uart_writeline("message is not yet valid, internal clock 0x", &current_timestamp);
-            continue;
-        }
-        if (valid_until < current_timestamp)
-        {
-            // mesage is no longer valid
-            uart_writeline("message is no longer valid, internal clock 0x", &current_timestamp);
-            continue;
-        }
+	if (!system_id | !key_id)
+	{
+	    uart_writeline("invalid system or key");
+	    continue;
+	}
 
-        const uint8_t message_type = message->buf[HMAC_SIZE + 16];
-        const uint8_t *payload = &(message->buf[HMAC_SIZE + 17]);
-        uint8_t payload_size = size - HMAC_SIZE - 17;
+	uint8_t current_key_index = get_key_index(system_id, key_id,'1'); //key type must be '1' for now, TODO
+
+	if (current_key_index == 0)
+	{
+	    //we don't have that key in our store
+
+	    //check if we are owned
+	    if (owner_system_id != 0 || owner_door_id != 0)
+	    {
+		uart_writeline("unknown system or key");
+		continue;
+	    }
+
+	    //special case, system is new and not yet owned, so we don't abort and don't check the signature
+	    //check if this is an "init" type message
+	    if (deserialize_utf8(message->buf.data(), &offset, 0) != 'I')
+	    {
+		//not an init type message, abort
+		continue;
+	    }
+	}
+	else
+	{
+	    //check ed25519 signature
+	    if (crypto_ed25519_check(message->buf.data(), keystore[current_key_index].key, message->buf.data() + SIG_SIZE, size-SIG_SIZE)) {
+	    // Message is corrupted, do not trust it
+		uart_writeline("signature check fail");
+		continue;
+	    } 
+	    //else Message is genuine
+
+	    // see if the timestamp is valid.
+	    uint32_t valid_from = deserialize_u32(&message->buf[SIG_SIZE]);
+	    uint16_t valid_time = deserialize_u16(&message->buf[SIG_SIZE+4]);
+
+	    uint64_t current_timestamp = get_timestamp();
+
+	    if (valid_from > current_timestamp)
+	    {
+		// message is not yet valid
+		uart_writeline("message is not yet valid, internal clock 0x", &current_timestamp);
+		continue;
+	    }
+	    if (valid_from + valid_time < current_timestamp)
+	    {
+		// mesage is no longer valid
+		uart_writeline("message is no longer valid, internal clock 0x", &current_timestamp);
+		continue;
+	    }
+	}
+
+	uint32_t message_type = deserialize_utf8(message->buf.data(), &offset, 1);
+
 
         // the message is valid, do its bidding.
         switch (message_type)
         {
-        case 0x01:
+        case 'I':
         {
-            // an 'open the door' message.
+            // an 'init' message. set the owner of a door.
             // payload:
-            //    char *    uid             (variable length)
+            //    1x utf_8 system_id
+	    //    1x utf_8 key_id
+	    //    1x utf_8 key_type
+	    //    uint8_t[32] key
+	    //    1x utf_8 door_id
 
-            if (!check_info(payload, payload_size))
-            {
-                // info is not valid
-                uart_writeline("message info is not valid");
-                continue;
-            }
+	    //update keyslot 1 and owner info
+	    owner_system_id = deserialize_utf8(message->buf.data(), &offset, 1);
+	    keystore[1].system_id = owner_system_id;
+	    keystore[1].key_id = deserialize_utf8(message->buf.data(), &offset, 1);
+	    keystore[1].key_type = deserialize_utf8(message->buf.data(), &offset, 1);
+
+	    memcpy(keystore[1].key, message->buf.data()+offset,32); //key is 32 bytes
+	    offset += 32;
+	    
+	    owner_door_id = deserialize_utf8(message->buf.data(), &offset, 1);
+	    keystore[1].door_id = owner_door_id;
+
+
+	    //TODO write keys to flash
+
+
+	    break;
+	}
+	case 'O':
+	{
 
             // it seems like you're in luck.
             uart_writeline("opening door");
@@ -231,23 +292,13 @@ static void cpp_main_in_cpp()
             // payload:
             //    uint8_t *    new_key_seed            (variable length)
 
-            if (payload_size < 1)
-            {
-                uart_writeline("payload is not valid");
-                continue;
-            }
 
             // calculate the new secret key
-            SHA256 hash;
-            hash.update(SECRET_KEY, sizeof(SECRET_KEY));
-            hash.update(payload, payload_size);
-            uint8_t digest[32];
-            hash.calculate_digest(digest);
 
             uart_writeline("writing new secret key");
 
             // write the new secret key
-            secret_key_write(digest);
+            //secret_key_write(0);
 
             break;
         }
