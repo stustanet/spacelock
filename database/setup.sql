@@ -72,7 +72,7 @@ create table if not exists signing_keys(
 	is_active boolean,				-- don't set to false, use null
 	comments text,
 	key_type char(1) not null default '1',		-- contains the type of the key; '1' is sodium signing-key;
-	secret_key bytea,				-- contains secret key or null
+	secret_key bytea,				-- contains secret key / secret or null
 	verify_key bytea not null,			-- contains public key			    
 	primary key(system_id, key_id),
 	unique(system_id, active)
@@ -102,23 +102,24 @@ create table if not exists doors_2_systems(
 ---
 create table if not exists keyrings(
 	keyring_id bigint primary key,
-	keyring_name text unique not null,
+	keyring_name text not null,
 	is_predefined boolean not null,
 	system_id char(1) references systems(system_id) not null,
 	comments text,
+	unique (keyring_name, system_id),
 	check (! is_predefined and keyring_name = 'ALL')
 );
 
 ---
 --- doors to keyrings
 ---
-create table if not exists door_system_2_keyrings(
-	door_system_id char(1) not null,
-	system_id char(1) references systems(system_id) not null,
-	keyring_id bigint references keyrings(keyring_id) not null,
-	primary key(door_system_id, system_id, keyring_id),
-	foreign key(door_system_id, system_id) references doors2systems(door_system_id, system_id),
-	foreign key(keyring_id, system_id) references keyrings(keyring_id, system_id)
+create table if not exists doors_X_keyrings(
+	system_door_id char(1) not null,					-- door_id in this system
+	system_id char(1) references systems(system_id) not null,		-- system_id the keyring belongs to
+	keyring_id bigint references keyrings(keyring_id) not null,		-- the keyring id
+	primary key (door_system_id, system_id, keyring_id),
+	foreign key (system_door_id, system_id) references doors_2_systems(system_door_id, system_id),
+	foreign key (keyring_id, system_id) references keyrings(keyring_id, system_id)
 );
 
 --
@@ -126,24 +127,29 @@ create table if not exists door_system_2_keyrings(
 --
 create table if not exists usr(
 	usr_id bigserial primary key,
-	key text unique not null,                         -- user's uuid for logins
-	reqid text unique not null,                       -- user'q account creation request id
-	name text unique,                                 -- some name
+	key text unique not null,				-- user's uuid for logins
+	reqid text unique not null,				-- user's account creation request id
+	name text,						-- some name
 	system_id char(1) references systems(system_id) not null,
-	granted_by bigint references usr(usr_id), -- who enabled the user initially
+	granted_by bigint references usr(usr_id),		-- who enabled the user initially
 	valid_from timestamp with time zone,
 	valid_to timestamp with time zone,
-	token_validity_time int not null default 0,       -- duration for token validity
-	active boolean not null default false,            -- is the user enabled
-	usermod boolean not null default false,           -- may this user modify other users
-	keyupdate boolean not null default false,         -- may this user update all door keys
-	hidden boolean not null default false             -- hide the user from the user list
-	foreign key(granted_by, system_id) references usr(usr_id, system_id),
+	token_validity_time int not null default 0,		-- duration for token validity
+	active boolean not null default false,			-- is the user enabled
+	usermod boolean not null default false,			-- may this user modify other users
+	keyupdate boolean not null default false,		-- may this user update all door keys
+	hidden boolean not null default false			-- hide the user from the user list
+	foreign key (granted_by, system_id) references usr(usr_id, system_id),
+	unique (system_id, name)
 );
 
+--
+-- permissions
+--
 create table if not exists permissions(
 	permission_id bigint references usr(user_id) not null,
 	keyring_id bigint references keyrings(keyring_id) not null,
+	user_id bigint not null,
 	system_id char(1) references systems(system_id) not null,
 	granted_by bigint references usr(usr_id),         -- who enabled the user initially
 	valid_from timestamp with time zone,
@@ -152,9 +158,9 @@ create table if not exists permissions(
 	active boolean not null default false,           -- is the user enabled
 	keyupdate boolean not null default false,        -- may this user update the door keys of the keyring
 	hidden boolean not null default false            -- hide permission from the list
-	primary key(usr_id, keyring_id),
-	foreign key(usr_id, system_id) references usr(usr_id, system_id),
-	foreign key(keyring_id, system_id) references keyrings(keyring_id, system_id)
+	primary key (usr_id, keyring_id),
+	foreign key (usr_id, system_id) references usr(usr_id, system_id),
+	foreign key (keyring_id, system_id) references keyrings(keyring_id, system_id)
 );
 
 
