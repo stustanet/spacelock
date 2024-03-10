@@ -8,19 +8,6 @@
 --
 -- given the secret return the verify-key
 --
-create or replace function verify_key(
-	signing_type char(1),
-	signing_secret bytea
-) returns bytea as $$
-	import nacl.signing
-
-	if signing_key_type != '1':
-		return None
-
-	verify_key_encoded = nacl.signing.SigningKey.generate(signing_key).verify_key.encode()
-	return verify_key_encoded
-$$ language plpython3u
-   set search_path = "$user", public;
 
 --
 -- given a secret create a signing key and return secret and verify-key
@@ -28,25 +15,18 @@ $$ language plpython3u
 --
 create or replace function create_signing_key_pair(
 	p_type char(1),
-	p_secret bytea,
-	OUT o_secret bytea,
-	OUT o_verify_key_encoded bytea
+	OUT o_secret_key bytea,
+	OUT o_verify_key bytea
 ) as $$
-	import nacl.signing
-	import nacl.utils
+	import libnacl
 
-	o_secret = None
-	o_verify_key_encoded = None
+	o_secret_key = None
+	o_verify_key = None
 
 	if p_key_type != '1':
 		return
 
-	if p_secret is None or p_secret == b'':
-		p_secret = nacl.utils.random()
-	
-	l_secret_key = nacl.signing.SigningKey.generate(p_secret)
-	o_verify_key_encoded = l_secret_key.verify_key.encode()
-	o_secret = p_secret
+	o_verify_key, o_secret_key = libnacl.crypto_sign_keypair()
 $$ language plpython3u
    set search_path = "$user", public;
 
@@ -57,20 +37,21 @@ create or replace function add_signing_key(
 	p_system_id char(1),
 	p_key_id char(1),
 	p_type char(1),
-	p_secret bytea
+	p_secret_key bytea,
+	p_verify_key bytea
 ) returns boolean as $$
 declare
-	l_secret bytea,
-	l_verify_key_encoded bytea
+	l_secret_key bytea,
+	l_verify_key bytea
 begin
-	select create_signing_key_pair(p_type, p_secret) into (l_secret, l_verify_key_enoced);
+	select create_signing_key_pair(p_type) into (l_secret_key, l_verify_key);
 
-	if l_signing_secret is null then
+	if l_secret_key is null then
 		return false;
 	end if
 
 	insert into signing_keys as system_id, key_id, type, secret_key, verify_key
-	values ( system_id, key_id, p_type, l_secret, l_verify_key_enoded );
+	values ( system_id, key_id, p_type, l_secret_key, l_verify_key );
 	return FOUND;
 $$ language plpgsql
    set search_path = "$user", public;
@@ -81,13 +62,13 @@ create or replace function sign_message(
 	p_system_id char(1),
 	p_key_id char(1),
 	p_key_type char(1),
-	p_secret bytea,
+	p_secret_key bytea,
 	p_payload bytea
 	p_now_timestamp double precision,
 	p_validity_window_size_sec int,
 ) returns bytea as $$
 	import struct
-	import nacl.signing
+	import libnacl
 
 	if p_key_type != '1':
 		return None
@@ -97,8 +78,7 @@ create or replace function sign_message(
 		int((p_now_timestamp - p_validity_window_size_sec) / 60),
 		int(p_validity_window_size_sec/60),
 	) + p_system_id.encode() + p_key_id.encode() + p_payload
-	secret_key = nacl.signing.SigningKey(p_secret)
-	signed_message = secret_key.sign(message)
+	signed_message = libnacl.crypto_sign(message, secret_key);
 	return signed_message
 $$ language plpython3u
    set search_path = "$user", public;
