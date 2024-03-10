@@ -162,9 +162,9 @@ static void cpp_main_in_cpp()
         //    uint8_t   signature[64]
         //    uint32_t  valid_from (unixtime/60)
         //    uint16_t  minutes_valid
-        //    1char utf-8   system_id
-        //    1char utf-8   key_id
-        //    1char utf-8   msg_type
+        //    1x utf-8   system_id
+        //    1x utf-8   key_id
+        //    1x utf-8   msg_type
 	//
         //    uint8_t   payload[]       (variable length)
 	//
@@ -246,6 +246,7 @@ static void cpp_main_in_cpp()
 
 	uint32_t message_type = deserialize_utf8(message->buf.data(), &offset, 1);
 
+	uint32_t target_door_id = 0;
 
         // the message is valid, do its bidding.
         switch (message_type)
@@ -254,11 +255,12 @@ static void cpp_main_in_cpp()
         {
             // an 'init' message. set the owner of a door.
             // payload:
-            //    1x utf_8 system_id
-	    //    1x utf_8 key_id
-	    //    1x utf_8 key_type
+            //    1x utf-8 system_id
+	    //    1x utf-8 key_id
+	    //    1x utf-8 key_type
 	    //    uint8_t[32] key
-	    //    1x utf_8 door_id
+	    //    1x utf-8 door_id
+	    //    uint8_t 0x00 stop
 
 	    //update keyslot 1 and owner info
 	    owner_system_id = deserialize_utf8(message->buf.data(), &offset, 1);
@@ -280,28 +282,117 @@ static void cpp_main_in_cpp()
 	}
 	case 'O':
 	{
+	    // "open" message, open doors with provided ids in this system_id
+	    // payload:
+	    //   1x utf-8 door_id1
+	    //   (1x utf-8 door_id2)
+	    //   .
+	    //   .
+	    //   .
+	    //   uint8_t 0x00 stop
 
-            // it seems like you're in luck.
-            uart_writeline("opening door");
-            open_door(motor);
+	    // get our doorid for this key and check if in list
+	    do
+	    {
+		target_door_id = deserialize_utf8(message->buf.data(), &offset, 1);
+		if (target_door_id == keystore[current_key_index].door_id)
+		{
+		    // it seems like you're in luck.
+		    uart_writeline("opening door");
+		    open_door(motor);
+		}
+	    } while (target_door_id != 0);
+
+	    uart_writeline("end of door_string");
             break;
         }
-        case 0x02:
+        case 'U':
         {
-            // an 'new SECRET_KEY' message.
+            // an 'Update key' message.
             // payload:
-            //    uint8_t *    new_key_seed            (variable length)
+            //    1x utf-8 system_id (of the new key)
+	    //    1x utf-8 key_id (of the new key)
+	    //    1x utf-8 key_type (of the new key)
+	    //    uint8_t[32] key
+	    //    2x utf-8 doortupel
+	    //    (2x utf-8 doortupel)
+	    //    .
+	    //    .
+	    //    .
+	    //    uint8_t 0x00 stop
+	   uint32_t read_owner_door_id = 0;
 
+	    // check, that the message is signed by the owner! only the owner may add key!
 
-            // calculate the new secret key
+	    if (keystore[current_key_index].system_id != owner_system_id)
+	    {
+		uart_writeline("add key not allowed");
+		break;
+	    }
 
-            uart_writeline("writing new secret key");
+	    uint32_t new_system_id = deserialize_utf8(message->buf.data(), &offset, 1);
+	    uint32_t new_key_id = deserialize_utf8(message->buf.data(), &offset, 1);
+	    uint32_t new_key_type = deserialize_utf8(message->buf.data(), &offset, 1);
 
-            // write the new secret key
-            //secret_key_write(0);
+	    uint16_t key_offset = offset;
+	    //jump over key
+	    offset += 32;
+
+	    //check if we are in the list of doors
+	    do
+	    {
+		//get two utf-8 chars
+		target_door_id = deserialize_utf8(message->buf.data(), &offset, 1);
+		if (target_door_id == 0)
+		{
+		    //end of list
+		    uart_writeline("local door id not in list");
+		    break;
+		}
+		read_owner_door_id = deserialize_utf8(message->buf.data(), &offset, 1);
+		if (read_owner_door_id == 0)
+		{
+		    //irregular end of list
+		    uart_writeline("error in door id list");
+		    break;
+		}
+
+		if (read_owner_door_id != owner_door_id)
+		{
+		    //we are not meant with this tupel
+		    continue; //next tupel
+		}
+
+		//we found a tupel for us
+		
+		uart_writeline("trying to add new key");
+		uint8_t new_keyslot = get_free_key_slot();
+		if (new_keyslot == 0)
+		{
+		    uart_writeline("no more free keyslots available");
+		    break;
+		}
+		keystore[new_keyslot].door_id = target_door_id;
+		keystore[new_keyslot].key_id = new_key_id;
+		keystore[new_keyslot].key_type = new_key_type ;
+		keystore[new_keyslot].system_id = new_system_id;
+		memcpy(keystore[new_keyslot].key, message->buf.data()+key_offset,32); //key is 32 bytes
+
+		uart_writeline("new key added");
+
+		//TODO write to flash
+
+		//sorry, we only add one door id
+		break;
+
+	    } while (target_door_id != 0);
 
             break;
         }
+	case 'F':
+	{
+	    break;
+	}
         default:
         {
             // unknown message type

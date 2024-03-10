@@ -50,6 +50,21 @@ uint8_t get_key_index(uint32_t system_id, uint32_t key_id, uint32_t key_type) //
 
 }
 
+uint8_t get_free_key_slot(void)
+{
+
+    uint8_t i = 0;
+
+    for (i=1; i<MAX_KEY_SLOTS; i++)
+    {
+	if (keystore[i].key_type == 0)
+	    return i;
+    }
+    //no more free slots
+    return 0;
+
+}
+
 bool secret_key_write(uint8_t secret_key[32]) {
     HAL_FLASH_Unlock();
 
