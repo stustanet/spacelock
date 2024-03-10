@@ -308,7 +308,7 @@ static void cpp_main_in_cpp()
         }
         case 'U':
         {
-            // an 'Update key' message.
+            // an 'Update key' message. add new key to keystore. only owner may do this
             // payload:
             //    1x utf-8 system_id (of the new key)
 	    //    1x utf-8 key_id (of the new key)
@@ -391,6 +391,53 @@ static void cpp_main_in_cpp()
         }
 	case 'F':
 	{
+            // 'flush' message. remove all keys of system, except specified key. only owner may do this
+            // payload:
+            //    1x utf-8 system_id
+	    //    1x utf-8 key_id
+	    //    1x utf-8 door_id1
+	    //    (1y utf-8 door_id2)
+	    //    .
+	    //    .
+	    //    .
+	    //    uint8_t 0x00 stop
+
+
+	    // check, that the message is signed by the owner! only the owner may add key!
+
+	    if (keystore[current_key_index].system_id != owner_system_id)
+	    {
+		uart_writeline("add key not allowed");
+		break;
+	    }
+	    uint32_t target_system_id = deserialize_utf8(message->buf.data(), &offset, 1); //from this system we flush keys
+	    uint32_t target_key_id = deserialize_utf8(message->buf.data(), &offset, 1); //except this one we keep
+
+	    //check door_ids contains own door_id
+	    do
+	    {
+		target_door_id = deserialize_utf8(message->buf.data(), &offset, 1);
+		if (target_door_id == keystore[current_key_index].door_id)
+		{
+		    // it seems like you're in luck.
+		    uart_writeline("door action is requested");
+		    //if in door list: check if target_system_id|target_key_id in keystore
+
+		    if (get_key_index(target_system_id, target_key_id, '1') != 0)
+		    {
+			//if yes remove all other keys for target_system_id, retain target_key_id
+			remove_system_except_one_key(target_system_id, target_key_id);
+		    }
+		    else
+		    {
+			//if not abort with audible error
+			//TODO make noise
+			uart_writeline("error: key to retain not in keystore");
+			break;
+		    }
+		}
+	    } while (target_door_id != 0);
+
 	    break;
 	}
         default:

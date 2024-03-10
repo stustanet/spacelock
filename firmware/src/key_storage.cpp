@@ -65,6 +65,47 @@ uint8_t get_free_key_slot(void)
 
 }
 
+uint8_t remove_system_except_one_key(uint32_t system_id, uint32_t key_id_retain)
+{
+
+    uint8_t index_to_retain = get_key_index(system_id, key_id_retain, '1');
+    if (index_to_retain == 0)
+    {
+	//abort, no key to retain
+	return 0;
+    }
+
+    uint8_t i = 0;
+    uint8_t keys_removed = 1;
+    
+    for (i=1;i<MAX_KEY_SLOTS;i++)
+    {
+	if (i == index_to_retain)
+	{
+	    //don't touch this index
+	    continue;
+	}
+	if (keystore[i].system_id == system_id)
+	{
+	    //other key from this system found
+	    //-> remove
+	    keystore[i].system_id = 0;
+	    keystore[i].key_id = 0;
+	    keystore[i].key_type = 0;
+	    keystore[i].door_id = 0;
+	    keys_removed++;
+
+	}
+
+    }
+    return keys_removed;
+
+}
+
+// TODO write keystore to flash
+// clear page (1kByte)
+// write keystore
+
 bool secret_key_write(uint8_t secret_key[32]) {
     HAL_FLASH_Unlock();
 
