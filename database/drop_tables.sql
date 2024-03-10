@@ -1,0 +1,9 @@
+drop table permissions;
+drop table usr;
+drop table doors_X_keyrings;
+drop table keyrings;
+drop table doors_X_systems;
+drop table doors;
+drop table systems;
+drop table signing_keys;
+drop table systems;

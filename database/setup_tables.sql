@@ -45,7 +45,7 @@ create table if not exists doors (
 );
 
 --- doors2systems
-create table if not exists doors_2_systems (
+create table if not exists doors_X_systems (
 	door_id bigint references doors(door_id) not null,
 	system_door_id char(1) not null,                   -- id of the door in the system system_id
 	system_id char(1) not null,                        -- system witch can grant access to the door
@@ -75,7 +75,7 @@ create table if not exists doors_X_keyrings (
 	system_id char(1) references systems(system_id) not null,		-- system_id the keyring belongs to
 	keyring_id bigint references keyrings(keyring_id) not null,		-- the keyring id
 	primary key (system_id, system_door_id, keyring_id),
-	foreign key (system_id, system_door_id) references doors_2_systems(system_id, system_door_id),
+	foreign key (system_id, system_door_id) references doors_X_systems(system_id, system_door_id),
 	foreign key (system_id, keyring_id) references keyrings(system_id, keyring_id)
 );
 
@@ -95,7 +95,7 @@ create table if not exists usr (
 	active boolean not null default false,			-- is the user enabled
 	usermod boolean not null default false,			-- may this user modify other users
 	keyupdate boolean not null default false,		-- may this user update all door keys
-	hidden boolean not null default false			-- hide the user from the user list
+	hidden boolean not null default false,			-- hide the user from the user list
 	comments text,
 	foreign key (granted_by, system_id) references usr(usr_id, system_id),
 	unique (system_id, usr_id),
