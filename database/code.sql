@@ -5,9 +5,11 @@
 -- (c) 2019-2023 Jonas Jelten <jj@sft.lol>
 --
 
---
--- given the secret return the verify-key
---
+
+-- ----
+-- ---- function which must be added by a superuser
+-- ---- because they use plpython3u
+-- ----
 
 --
 -- given a secret create a signing key and return secret and verify-key
@@ -15,49 +17,22 @@
 --
 create or replace function create_signing_key_pair(
 	p_type char(1),
-	OUT o_secret_key bytea,
-	OUT o_verify_key bytea
+	OUT secret_key bytea,
+	OUT verify_key bytea
 ) as $$
 	import libnacl
 
-	o_secret_key = None
-	o_verify_key = None
-
-	if p_key_type != '1':
+	if p_type != '1':
 		return
 
-	o_verify_key, o_secret_key = libnacl.crypto_sign_keypair()
+	verify_key, secret_key = libnacl.crypto_sign_keypair()
+	return secret_key, verify_key
 $$ language plpython3u
    set search_path = "$user", public;
 
 --
--- add a key to the table of signing keys
+--  sign a message
 --
-create or replace function add_signing_key(
-	p_system_id char(1),
-	p_key_id char(1),
-	p_type char(1),
-	p_secret_key bytea,
-	p_verify_key bytea
-) returns boolean as $$
-declare
-	l_secret_key bytea,
-	l_verify_key bytea
-begin
-	select create_signing_key_pair(p_type) into (l_secret_key, l_verify_key);
-
-	if l_secret_key is null then
-		return false;
-	end if
-
-	insert into signing_keys as system_id, key_id, type, secret_key, verify_key
-	values ( system_id, key_id, p_type, l_secret_key, l_verify_key );
-	return FOUND;
-$$ language plpgsql
-   set search_path = "$user", public;
-
-
--- message signing in python, because we can
 create or replace function sign_message(
 	p_system_id char(1),
 	p_key_id char(1),
@@ -78,12 +53,46 @@ create or replace function sign_message(
 		int((p_now_timestamp - p_validity_window_size_sec) / 60),
 		int(p_validity_window_size_sec/60),
 	) + p_system_id.encode() + p_key_id.encode() + p_payload
-	signed_message = libnacl.crypto_sign(message, secret_key);
+	signed_message = libnacl.crypto_sign(message, p_secret_key);
 	return signed_message
 $$ language plpython3u
    set search_path = "$user", public;
 
 
+
+-- ----
+-- ---- other functions
+-- ----
+
+
+--
+-- add a key to the table of signing keys
+--
+create or replace function add_signing_key(
+	p_system_id char(1),
+	p_key_id char(1),
+	p_type char(1),
+) returns boolean as $$
+declare
+	l_secret_key bytea,
+	l_verify_key bytea
+begin
+	select * from create_signing_key_pair(p_type) into (l_secret_key, l_verify_key);
+
+	if l_secret_key is null then
+		return false;
+	end if;
+
+	insert into signing_keys as system_id, key_id, type, secret_key, verify_key
+	values ( system_id, key_id, p_type, l_secret_key, l_verify_key );
+	return FOUND;
+$$ language plpgsql
+   set search_path = "$user", public;
+
+
+--
+-- get the actual active signing key
+--
 create or replace get_signing_key(
 	p_system_id char(1)
 ) returns RECORD as $$
@@ -99,12 +108,15 @@ $$ language plpgsql
    set search_path = "$user", public;
 	
 
+--
+-- create and sign a message
+--
 create or replace function create_message(
 	p_system_id char(1),
 	p_message_type char(1),
 	p_payload_type char(1),
 	p_payload bytea,
-	p_now_timestamp timestamp with timestamp,
+	p_now_timestamp timestamp with time zone,
 	p_validity_window_size_sec int,
 ) returns text as $$
 declare
@@ -113,7 +125,7 @@ declare
 	l_secret_key bytea;
 	l_signed_message bytea;
 begin
-	select get_signing_key(p_system_id) into l_key_type, l_key_id, l_secret;
+	select get_signing_key(p_system_id) into l_key_type, l_key_id, l_secret_key;
 	if not found then
 		return null;
 	end if;
@@ -121,7 +133,7 @@ begin
 		p_system_id,
 		l_key_id,
 		l_key_type,
-		l_secret,
+		l_secret_key,
 		convert_to(p_payload_type, 'UTF8') + p_payload,
 		p_now_timestamp,
 		p_validity_window_size_sec,
@@ -202,7 +214,7 @@ $$ language plpgsql
 create or replace function create_message_add_key(
 	p_doors_owner_system_id char(1),
 	p_system_id char(1),
-	now_timestamp timestamp with timestamp,
+	now_timestamp timestamp with time zone,
 	validity_window_size_sec int
 ) returns bytea as $$
 declare
@@ -267,7 +279,7 @@ $$ language plpgsql
 create or replace function create_message_flush_keys(
 	p_doors_owner_system_id char(1),
 	p_system_id char(1),
-	now_timestamp timestamp with timestamp,
+	now_timestamp timestamp with time zone,
 	validity_window_size_sec int
 ) returns bytea as $$
 declare
@@ -321,7 +333,7 @@ $$ language plpgsql
 create or replace function create_message_flush_keys(
 	p_system_id char(1),
 	p_usr bigint,
-	p_now_timestamp timestamp with timestamp,
+	p_now_timestamp timestamp with time zone,
 ) returns bytea as $$
 declare
 	l_door_string text;
@@ -388,6 +400,9 @@ $$ language plpgsql
 
 
 
+--  -----------
+--  ----------- old functions, to be replaced
+--  -----------
 
 
 -- check message signature of a key-update message
