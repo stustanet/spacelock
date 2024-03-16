@@ -17,8 +17,8 @@
 --
 create or replace function create_signing_key_pair(
 	p_type char(1),
-	OUT secret_key bytea,
-	OUT verify_key bytea
+	out secret_key bytea,
+	out verify_key bytea
 ) as $$
 	import libnacl
 
@@ -38,9 +38,9 @@ create or replace function sign_message(
 	p_key_id char(1),
 	p_key_type char(1),
 	p_secret_key bytea,
-	p_payload bytea
+	p_payload bytea,
 	p_now_timestamp double precision,
-	p_validity_window_size_sec int,
+	p_validity_window_size_sec int
 ) returns bytea as $$
 	import struct
 	import libnacl
@@ -71,21 +71,24 @@ $$ language plpython3u
 create or replace function add_signing_key(
 	p_system_id char(1),
 	p_key_id char(1),
-	p_type char(1),
+	p_type char(1)
 ) returns boolean as $$
 declare
-	l_secret_key bytea,
-	l_verify_key bytea
+	l_secret_key bytea;
+	l_verify_key bytea;
 begin
-	select * from create_signing_key_pair(p_type) into (l_secret_key, l_verify_key);
+	select *
+	into l_secret_key, l_verify_key
+	from create_signing_key_pair(p_type);
 
 	if l_secret_key is null then
 		return false;
 	end if;
 
-	insert into signing_keys as system_id, key_id, type, secret_key, verify_key
-	values ( system_id, key_id, p_type, l_secret_key, l_verify_key );
-	return FOUND;
+	insert into signing_keys ( system_id, key_id, key_type, secret_key, verify_key )
+	values ( p_system_id, p_key_id, p_type, l_secret_key, l_verify_key );
+	return found;
+end;
 $$ language plpgsql
    set search_path = "$user", public;
 
@@ -93,16 +96,14 @@ $$ language plpgsql
 --
 -- get the actual active signing key
 --
-create or replace get_signing_key(
+create or replace function get_signing_key(
 	p_system_id char(1)
-) returns RECORD as $$
-declare
-	ret RECORD;
+) returns setof active_signing_key_data as $$
 begin
-	select key_type, key_id, secret_key into ret
-	from keys
-	where system_id = p_system_id and active = true;
-	return ret
+	return query
+		select *
+		from active_signing_key_data
+		where system_id = p_system_id;
 end;
 $$ language plpgsql
    set search_path = "$user", public;
@@ -113,32 +114,38 @@ $$ language plpgsql
 --
 create or replace function create_message(
 	p_system_id char(1),
-	p_message_type char(1),
 	p_payload_type char(1),
 	p_payload bytea,
 	p_now_timestamp timestamp with time zone,
-	p_validity_window_size_sec int,
-) returns text as $$
+	p_validity_window_size_sec int
+) returns bytea as $$
 declare
 	l_key_id char(1);
 	l_key_type char(1);
 	l_secret_key bytea;
 	l_signed_message bytea;
+	l_now_utc_timestamp double precision;
 begin
-	select get_signing_key(p_system_id) into l_key_type, l_key_id, l_secret_key;
+	select key_id, key_type, secret_key
+	into l_key_id, l_key_type, l_secret_key
+	from get_signing_key(p_system_id);
 	if not found then
 		return null;
 	end if;
-	select sign_message(
+	select extract(epoch from (p_now_timestamp at time zone 'UTC'))
+	into l_now_utc_timestamp;
+	select *
+	into l_signed_message
+	from sign_message(
 		p_system_id,
 		l_key_id,
 		l_key_type,
 		l_secret_key,
-		convert_to(p_payload_type, 'UTF8') + p_payload,
-		p_now_timestamp,
-		p_validity_window_size_sec,
-	) into l_signed_message;
-	return l_signed_message
+		convert_to(p_payload_type, 'UTF8') || p_payload,
+		l_now_utc_timestamp,
+		p_validity_window_size_sec
+	);
+	return l_signed_message;
 end;
 $$ language plpgsql
    set search_path = "$user", public;
@@ -158,8 +165,7 @@ $$ language plpgsql
 -- 
 create or replace function create_message_init_door(
 	p_owner_system_id char(1),		-- system the door itself think it is belonging too
-	p_door_id char(1),			-- the id of the door
-	p_system_id char(1),			-- the system the door should belong too
+	p_system_door_id char(1),		-- the id of the door
 	now_timestamp timestamp with time zone,
 	validity_window_size_sec int
 ) returns bytea as $$
@@ -168,9 +174,11 @@ declare
 	l_key_type char(1);
 	l_verify_key bytea;
 	is_foreign boolean;
+	l_payload bytea;
 begin
 	-- the door already has to belong to the new system
-	perform true from doors where door_id = p_door_id and owner_system_id = p_system_id;
+	perform true from doors as d join doors_X_systems as dXs on d.door_id = dXs.door_id
+	where dXs.system_id = p_owner_system_id and dXs.system_door_id = p_system_door_id;
 	if not found then
 		return null;
 	end if;
@@ -178,21 +186,22 @@ begin
 	select key_id, key_type, verify_key
 	into l_key_id, l_key_type, l_verify_key
 	from signing_keys
-	where system_id = p_system_id and is_active = true;
-	if l_key_id is null then
+	where system_id = p_owner_system_id and is_active = true;
+	if not found then
 		return null;
 	end if;
 
-	payload =    convert_to(p_system_id || l_key_id || l_key_type, 'UTF8')
-	          || l_verify_key || convert_to(p_door_id, 'UTF8');
+	select    convert_to(p_owner_system_id || l_key_id || l_key_type, 'UTF8')
+	       || l_verify_key || convert_to(p_system_door_id, 'UTF8')
+	into l_payload;
 
 	return create_message(
 		p_owner_system_id,
-		now_timestamp,
-		validity_window_size_sec,
 		'I',
-		payload
-	)
+		l_payload,
+		now_timestamp,
+		validity_window_size_sec
+	);
 end;
 $$ language plpgsql
    set search_path = "$user", public;
@@ -221,8 +230,9 @@ declare
 	l_new_key_id char(1);
 	l_new_key_type char(1);
 	l_new_verify_key bytea;
-	l_new_key_version bigint;
+	l_new_key_version timestamp with time zone;
 	l_door_string text;
+	l_payload bytea;
 begin
 	select key_id, key_type, verify_key, version
 	into l_new_key_id, l_new_key_type, l_new_verify_key, l_new_key_version
@@ -236,30 +246,30 @@ begin
 	end if;
 
 	select STRING_AGG(
-		d2sS.system_door_id || d2sO.system_door_id
-		order d2sS.system_door_id, d2sO.system_door_id
+		dXsS.system_door_id || dXsO.system_door_id, ''
+		order by dXsS.system_door_id || dXsO.system_door_id
 	) as doors
 	into l_door_string
 	from	     doors as d
-		join doors_2_systems as d2sO on d.door_id = d2sO.door_id
-	        join doors_2_systems as d2sS on d2s0.door_id = d2sS.door_id
+		join doors_X_systems as dXsO on d.door_id = dXsO.door_id
+	        join doors_X_systems as dXsS on dXsO.door_id = dXsS.door_id
 	where	d.owner_system_id = p_doors_owner_system_id
-		and d2sS.system_id = p_system_id;
+		and dXsS.system_id = p_system_id;
 
-	if not found then
-		return null;
+	if l_door_string is null then
+		l_door_string := '';
 	end if;
 
-	payload =    convert_to(p_system_id || l_new_key_id || l_new_key_type, 'UTF8')
-	          || l_new_verify_key || convert_to(l_door_string, 'UTF8') || '\x00'::bytea
+	l_payload =    convert_to(p_system_id || l_new_key_id || l_new_key_type, 'UTF8')
+	            || l_new_verify_key || convert_to(l_door_string, 'UTF8') || '\x00'::bytea;
 
 	return create_message(
 		p_doors_owner_system_id,
-		now_timestamp,
-		validity_window_size_sec,
 		'U',
-		payload
-	)
+		l_payload,
+		now_timestamp,
+		validity_window_size_sec
+	);
 end;
 $$ language plpgsql
    set search_path = "$user", public;
@@ -286,6 +296,7 @@ declare
 	l_active_key_id char(1);
 	l_active_key_type char(1);
 	l_door_string text;
+	l_payload bytea;
 begin
 	select key_id, key_type
 	into l_active_key_id, l_active_key_type
@@ -296,27 +307,27 @@ begin
 		return null;
 	end if;
 
-	select STRING_AGG(system_door_id order by system_door_id)
+	select STRING_AGG(system_door_id, '' order by system_door_id)
 	into l_door_string
 	from	     doors
-		join doors_2_systems on doors.door_id = doors_2_systems.door_id
+		join doors_X_systems on doors.door_id = doors_X_systems.door_id
 	where     doors.owner_system_id = p_doors_owner_system_id
-	      and doors_2_systems.system_id = p_system_id;
+	      and doors_X_systems.system_id = p_system_id;
 
 	if not found then
 		return null;
 	end if;
 
-	payload =    convert_to(p_system_id || l_active_key_id, 'UTF8')
-	          || convert_to(l_door_string, 'UTF8') || '\x00'::bytea
+	l_payload =    convert_to(p_system_id || l_active_key_id, 'UTF8')
+	            || convert_to(l_door_string, 'UTF8') || '\x00'::bytea;
 
 	return create_message(
 		p_doors_owner_system_id,
-		now_timestamp,
-		validity_window_size_sec,
 		'F',
-		payload
-	)
+		l_payload,
+		now_timestamp,
+		validity_window_size_sec
+	);
 end;
 $$ language plpgsql
    set search_path = "$user", public;
@@ -330,10 +341,10 @@ $$ language plpgsql
 --	doors           uft8-encodeder string
 --	\0
 --	
-create or replace function create_message_flush_keys(
+create or replace function create_message_open_doors(
 	p_system_id char(1),
 	p_usr bigint,
-	p_now_timestamp timestamp with time zone,
+	p_now_timestamp timestamp with time zone
 ) returns bytea as $$
 declare
 	l_door_string text;
@@ -342,9 +353,11 @@ declare
 	l_user_token_validity_time int;
 	l_user_valid_from timestamp with time zone;
 	l_user_valid_to timestamp with time zone;
+	l_payload bytea;
 begin
 	select valid_from, valid_to, token_validity_time
 	into l_user_valid_from, l_user_valid_to, l_user_token_validity_time
+	from usr
 	where	    system_id = p_system_id and usr_id = p_usr
 		and active = true
 		and valid_from <= p_now_timestamp and p_now_timestamp < valid_to
@@ -354,12 +367,13 @@ begin
 		return null;
 	end if;
 
-	select STRING_AGG(d2s.system_door_id order by d2s.system_door_id), min(p.valid_to), min(p.token_validity_time)
+	select STRING_AGG(dXs.system_door_id, ''
+		order by dXs.system_door_id), min(p.valid_to), min(p.token_validity_time)
 	into l_door_string, l_valid_to, l_token_validity_time
 	from	     doors as d
-		join doors_2_systems as d2s on d.door_id = d2s.door_id
+		join doors_X_systems as dXs on d.door_id = dXs.door_id
 		join doors_X_keyrings as dXk
-			on dXk.system_door_id = d2s.system_door_id and sXk.system_id = d2s.system_id
+			on dXk.system_door_id = dXs.system_door_id and sXk.system_id = dXs.system_id
 		join keyrings as k on k.system_id = dXk.system_id and k.keyring_id = d2k.keyring_id
 		join permissions as p on p.system_id = k.system_id and p.keyring_id = k.keyring_id
 		join usr as u on u.system_id = p.system_id and u.usr_id = p.usr_id
@@ -370,29 +384,31 @@ begin
 		and (p_now_timestamp < p.valid_to or p.valid_from is null)
 	;
 
-	if not found then
-		return null;
+	if l_door_string is null then
+		l_door_string = '';
+		l_valid_to = 0;
+		l_token_validity_time = 0;
 	end if;
 
 	if l_token_validity_time > l_user_token_validity_time then
-		l_token_validity_time = l_user_token_validity_time
+		l_token_validity_time = l_user_token_validity_time;
 	end if;
 	if l_valid_to > l_user_valid_to then
-		l_valid_to = l_user_valid_to
+		l_valid_to = l_user_valid_to;
 	end if;
 	if l_valid_to - p_now_timestamp < l_token_validity_time then
-		l_token_validity_time = l_valid_to - p_now_timestamp
+		l_token_validity_time = l_valid_to - p_now_timestamp;
 	end if;
 
-	payload =  convert_to(l_door_string, 'UTF8') || '\x00'::bytea
+	l_payload = convert_to(l_door_string, 'UTF8') || '\x00'::bytea;
 
 	return create_message(
 		p_doors_owner_system_id,
-		p_now_timestamp,
-		l_token_validity_time,
 		'O',
-		payload
-	)
+		l_payload,
+		p_now_timestamp,
+		l_token_validity_time
+	);
 end;
 $$ language plpgsql
    set search_path = "$user", public;
