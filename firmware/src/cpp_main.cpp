@@ -108,6 +108,8 @@ static void cpp_main_in_cpp()
     InputPin dcf77_pin(GPIOA, GPIO_PIN_8);
     dcf77_init(&dcf77_pin, &led_timestate);
 
+    init_keystore();
+
     uart_writeline("Spacelock initialized! \U0001F389");
 
     while (1)
@@ -170,7 +172,7 @@ static void cpp_main_in_cpp()
 	//
 #define SYSTEM_ID_OFFSET SIG_SIZE+6
 
-        if (size <= SIG_SIZE + 9) //TODO adapt for ed25519
+        if (size <= SIG_SIZE + 9)
         {
             // the message is too small
             uart_writeline("message is too small");
@@ -262,6 +264,14 @@ static void cpp_main_in_cpp()
 	    //    1x utf-8 door_id
 	    //    uint8_t 0x00 stop
 
+	    // check if we are owned
+	    if (owner_system_id != 0 || owner_door_id != 0)
+	    {
+		//system is already owned, so ignore message
+		uart_writeline("door is already initialized");
+		break;
+	    }
+
 	    //update keyslot 1 and owner info
 	    owner_system_id = deserialize_utf8(message->buf.data(), &offset, 1);
 	    keystore[1].system_id = owner_system_id;
@@ -275,7 +285,9 @@ static void cpp_main_in_cpp()
 	    keystore[1].door_id = owner_door_id;
 
 
-	    //TODO write keys to flash
+	    //write owner and keystore to flash
+	    owner_write();
+	    key_store_write();
 
 
 	    break;
@@ -380,7 +392,8 @@ static void cpp_main_in_cpp()
 
 		uart_writeline("new key added");
 
-		//TODO write to flash
+		//write keystore to flash
+		key_store_write();
 
 		//sorry, we only add one door id
 		break;
@@ -427,6 +440,8 @@ static void cpp_main_in_cpp()
 		    {
 			//if yes remove all other keys for target_system_id, retain target_key_id
 			remove_system_except_one_key(target_system_id, target_key_id);
+			// write keystore to flash
+			key_store_write();
 		    }
 		    else
 		    {

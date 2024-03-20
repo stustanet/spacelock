@@ -2,6 +2,8 @@
 
 #include "stm32f1xx_hal.h"
 
+#include <cstring>
+
 //typedef struct {
 //    uint32_t system_id;
 //    uint32_t key_id;
@@ -17,10 +19,24 @@ PubKey_T keystore[MAX_KEY_SLOTS]; //keyslot[0] is always empty
 
 __attribute__((section(".owner_storage")))
 const uint32_t owner_system_id_flash = 0;
+
+__attribute__((section(".owner_storage")))
 const uint32_t owner_door_id_flash = 0;
+
 __attribute__((section(".key_storage")))
 const PubKey_T keystore_flash[MAX_KEY_SLOTS] = {0}; //keyslot[0] is always empty
 
+void init_keystore(void)
+{
+    //owner_system_id = owner_system_id_flash;
+    //owner_door_id = owner_door_id_flash;
+    memcpy(&owner_system_id, &owner_system_id_flash, 4);
+    memcpy(&owner_door_id, &owner_door_id_flash, 4);
+
+    memcpy(keystore, keystore_flash, sizeof(keystore));
+
+    return;
+}
 
 uint8_t get_key_index(uint32_t system_id, uint32_t key_id, uint32_t key_type) //TODO can be timed, is it a risk?
 {
@@ -44,7 +60,6 @@ uint8_t get_key_index(uint32_t system_id, uint32_t key_id, uint32_t key_type) //
 		}
 	    }
 	}
-
     }
     return 0;
 
@@ -54,7 +69,6 @@ uint8_t get_free_key_slot(void)
 {
 
     uint8_t i = 0;
-
     for (i=1; i<MAX_KEY_SLOTS; i++)
     {
 	if (keystore[i].key_type == 0)
@@ -102,34 +116,68 @@ uint8_t remove_system_except_one_key(uint32_t system_id, uint32_t key_id_retain)
 
 }
 
-// TODO write keystore to flash
-// clear page (1kByte)
-// write keystore
+// write keystore to flash
+// 1. clear page (1kByte)
+// 2. write keystore
 
-bool secret_key_write(uint8_t secret_key[32]) {
+bool key_store_write(void) {
     HAL_FLASH_Unlock();
 
-//    FLASH_EraseInitTypeDef erase_init;
-//    erase_init.TypeErase = FLASH_TYPEERASE_PAGES;
-//    erase_init.Banks = 0; /* only used for mass erase */
-//    erase_init.PageAddress = reinterpret_cast<uint32_t>(&SECRET_KEY);
-//    erase_init.NbPages = 1;
+    FLASH_EraseInitTypeDef erase_init;
+    erase_init.TypeErase = FLASH_TYPEERASE_PAGES;
+    erase_init.Banks = 0; /* only used for mass erase */
+    erase_init.PageAddress = reinterpret_cast<uint32_t>(&keystore_flash);
+    erase_init.NbPages = 1;
 
-//    uint32_t page_error;
-//    HAL_FLASHEx_Erase(&erase_init, &page_error);
+    uint32_t page_error;
+    HAL_FLASHEx_Erase(&erase_init, &page_error);
 
-/*    for (uint8_t i = 0; i < sizeof(SECRET_KEY)/2; i++) {
+    for (uint16_t i = 0; i < sizeof(keystore)/2; i++) {
         HAL_FLASH_Program(
             FLASH_TYPEPROGRAM_HALFWORD,
-            reinterpret_cast<uint32_t>(&SECRET_KEY) + i * 2,
-            reinterpret_cast<uint16_t *>(secret_key)[i]
+            reinterpret_cast<uint32_t>(&keystore_flash) + i * 2,
+            reinterpret_cast<uint16_t *>(keystore)[i]
         );
     }
-*/
+
     HAL_FLASH_Lock();
 
     return true;
 }
 
+// write owner
+// no delete because this is only done once
 
+bool owner_write(void) {
+    HAL_FLASH_Unlock();
+
+//    FLASH_EraseInitTypeDef erase_init;
+//    erase_init.TypeErase = FLASH_TYPEERASE_PAGES;
+//    erase_init.Banks = 0; /* only used for mass erase */
+//    erase_init.PageAddress = reinterpret_cast<uint32_t>(&owner_system_id_flash);
+//    erase_init.NbPages = 1;
+
+//    uint32_t page_error;
+//    HAL_FLASHEx_Erase(&erase_init, &page_error);
+
+    for (uint8_t i = 0; i < sizeof(owner_system_id)/2; i++) {
+        HAL_FLASH_Program(
+            FLASH_TYPEPROGRAM_HALFWORD,
+            reinterpret_cast<uint32_t>(&owner_system_id_flash) + i * 2,
+            reinterpret_cast<uint16_t *>(&owner_system_id)[i]
+        );
+    }
+
+    for (uint8_t i = 0; i < sizeof(owner_door_id)/2; i++) {
+        HAL_FLASH_Program(
+            FLASH_TYPEPROGRAM_HALFWORD,
+            reinterpret_cast<uint32_t>(&owner_door_id_flash) + i * 2,
+            reinterpret_cast<uint16_t *>(&owner_door_id)[i]
+        );
+    }
+
+    HAL_FLASH_Lock();
+
+    return true;
+}
 
