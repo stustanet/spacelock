@@ -83,8 +83,8 @@ create table if not exists doors_X_keyrings (
 -- users
 --
 create table if not exists usr (
-	usr_id bigserial primary key,
-	key text unique not null,				-- user's uuid for logins
+	usr_id bigint primary key default gen_random_bigint(),	-- user's 
+	key uuid unique not null default gen_random_uuid(),	-- user's uuid for logins
 	reqid text unique not null,				-- user's account creation request id
 	name text,						-- some name
 	system_id char(1) references systems(system_id) not null,
@@ -94,7 +94,7 @@ create table if not exists usr (
 	token_validity_time int not null default 0,		-- duration for token validity
 	active boolean not null default false,			-- is the user enabled
 	usermod boolean not null default false,			-- may this user modify other users
-	keyupdate boolean not null default false,		-- may this user update all door keys
+	manager boolean not null default false,			-- may this add, modfiy doors, keys, ...
 	hidden boolean not null default false,			-- hide the user from the user list
 	comments text,
 	foreign key (granted_by, system_id) references usr(usr_id, system_id),
@@ -106,7 +106,7 @@ create table if not exists usr (
 -- permissions
 --
 create table if not exists permissions (
-	permission_id bigserial primary key,
+	permission_id bigint primary key default gen_random_bigint(),
 	keyring_id bigint references keyrings(keyring_id) not null,
 	usr_id bigint references usr(usr_id) not null,
 	system_id char(1) references systems(system_id) not null,
