@@ -21,7 +21,7 @@ values (
 insert into systems (system_id, system_name, is_foreign, comments)
 values (
 	'C',
-	'TESTB',
+	'TESTC',
 	false,
 	'test C, has no doors'
 );
@@ -43,11 +43,12 @@ insert into signing_keys (system_id, key_id, version, is_active, comments, key_t
 values (
 	'A',
 	'A',
-	'2024-03-16 18:46:11.349508+01'::timestamp with zone,
+	'2024-03-16 18:46:11.349508+01'::timestamp with time zone,
 	true,
 	'ein wirklich schöner schlüssel für system A',
+	'1',
 	'\x7ea0ecec75b4da207aefdb170bd42a944488c8a7a0b07ebbd7c684dc0911a4ec0172ba3468777bf5ff59ac064e61a244ed7aeceb57ad6535f0b95cf99e598232'::bytea,
-	'\x0172ba3468777bf5ff59ac064e61a244ed7aeceb57ad6535f0b95cf99e598232'::bytea,
+	'\x0172ba3468777bf5ff59ac064e61a244ed7aeceb57ad6535f0b95cf99e598232'::bytea
 );
 
 
@@ -66,7 +67,7 @@ insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	1,
 	'1',
-	'A',
+	'A'
 );
 
 insert into doors (door_id, door_name, owner_system_id, comments)
@@ -80,7 +81,7 @@ insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	2,
 	'2',
-	'A',
+	'A'
 );
 
 insert into doors (door_id, door_name, owner_system_id, comments)
@@ -94,7 +95,7 @@ insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	3,
 	'3',
-	'A',
+	'A'
 );
 
 insert into doors (door_id, door_name, owner_system_id, comments)
@@ -108,7 +109,7 @@ insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	4,
 	'4',
-	'A',
+	'A'
 );
 
 insert into doors (door_id, door_name, owner_system_id, comments)
@@ -122,7 +123,7 @@ insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	5,
 	'5',
-	'A',
+	'A'
 );
 
 insert into doors (door_id, door_name, owner_system_id, comments)
@@ -136,7 +137,7 @@ insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	6,
 	'6',
-	'A',
+	'A'
 );
 
 insert into doors (door_id, door_name, owner_system_id, comments)
@@ -150,7 +151,7 @@ insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	7,
 	'7',
-	'A',
+	'A'
 );
 
 insert into doors (door_id, door_name, owner_system_id, comments)
@@ -164,7 +165,7 @@ insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	8,
 	'8',
-	'A',
+	'A'
 );
 
 insert into doors (door_id, door_name, owner_system_id, comments)
@@ -178,7 +179,7 @@ insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	9,
 	'9',
-	'A',
+	'A'
 );
 
 insert into doors (door_id, door_name, owner_system_id, comments)
@@ -192,13 +193,13 @@ insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	101,
 	'1',
-	'B',
+	'B'
 );
 insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	101,
 	'a',
-	'A',
+	'A'
 );
 
 insert into doors (door_id, door_name, owner_system_id, comments)
@@ -212,13 +213,13 @@ insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	102,
 	'2',
-	'B',
+	'B'
 );
 insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	102,
 	'b',
-	'A',
+	'A'
 );
 
 insert into doors (door_id, door_name, owner_system_id, comments)
@@ -232,7 +233,7 @@ insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	103,
 	'3',
-	'B',
+	'B'
 );
 
 insert into doors (door_id, door_name, owner_system_id, comments)
@@ -246,7 +247,7 @@ insert into doors_x_systems (door_id, system_door_id, system_id)
 values (
 	104,
 	'4',
-	'B',
+	'B'
 );
 
 
@@ -261,6 +262,30 @@ values (
 	'A',
 	'türen 1,2,3,101'
 );
+insert into doors_X_keyrings (system_door_id, system_id, keyring_id)
+values (
+	'1',
+	'A',
+	1
+);
+insert into doors_X_keyrings (system_door_id, system_id, keyring_id)
+values (
+	'2',
+	'A',
+	1
+);
+insert into doors_X_keyrings (system_door_id, system_id, keyring_id)
+values (
+	'3',
+	'A',
+	1
+);
+insert into doors_X_keyrings (system_door_id, system_id, keyring_id)
+values (
+	'a',
+	'A',
+	1
+);
 
 insert into keyrings (keyring_id, keyring_name, is_predefined, system_id, comments)
 values (
@@ -269,6 +294,18 @@ values (
 	false,
 	'A',
 	'türen 1,9'
+);
+insert into doors_X_keyrings (system_door_id, system_id, keyring_id)
+values (
+	'1',
+	'A',
+	2
+);
+insert into doors_X_keyrings (system_door_id, system_id, keyring_id)
+values (
+	'9',
+	'A',
+	2
 );
 
 
@@ -279,12 +316,12 @@ values (
 insert into usr (usr_id,key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
 values (
 	1,
+	'46675c70-886d-409f-adb3-92e7eb2cd9b0',
 	'superadmin_A',
-	'7ffbd060-e9f6-11ee-87b0-28d244ae06bb',
 	'Superadmin A',
 	'A',
 	null,
-	'2024-03-01 18:46:11'::timestamp with zone,
+	'2024-03-01 18:46:11'::timestamp with time zone,
 	null,
 	3600,
 	true,
@@ -297,12 +334,12 @@ values (
 insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
 values (
 	2,
+	'b7ef10d5-1d98-4952-aac0-d19e49f23d97',
 	'superadmin_B',
-	'0496d3be-e9f8-11ee-a6d0-28d244ae06bb',
 	'Superadmin B',
 	'B',
 	null,
-	'2024-03-01 18:46:11'::timestamp with zone,
+	'2024-03-01 18:46:11'::timestamp with time zone,
 	null,
 	3600,
 	true,
@@ -315,18 +352,235 @@ values (
 insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
 values (
 	3,
-	'manager_A1',
-	'7ffbd060-e9f6-11ee-87b0-28d244ae06bb',
-	'Superadmin A',
-	'A',
+	'4bff6567-a1e7-4de5-8a3f-d42de9689a69',
+	'superadmin_C',
+	'Superadmin C',
+	'C',
 	null,
-	'2024-03-01 18:46:11'::timestamp with zone,
-	1,
+	'2024-03-01 18:46:11'::timestamp with time zone,
+	null,
 	3600,
 	true,
 	true,
 	true,
 	true,
-	'Superadmin A, ausgang alle rechte in system A'
+	'Superadmin C, ausgang alle rechte in system C'
 );
 
+insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+values (
+	101,
+	'88902ef8-0330-4f74-8ae9-d1a94391a697',
+	'manager_A1',
+	'Manager A1',
+	'A',
+	1,
+	'2024-03-01 18:46:11'::timestamp with time zone,
+	null,
+	3600,
+	true,
+	true,
+	true,
+	false,
+	'Manager A1, alle rechte in system A'
+);
+
+insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+values (
+	102,
+	'7b8e050b-e3b1-4a76-b1c8-b9bc672db3a6',
+	'manager_B1',
+	'Manager B1',
+	'B',
+	2,
+	'2024-03-01 18:46:11'::timestamp with time zone,
+	null,
+	3600,
+	true,
+	true,
+	true,
+	false,
+	'Manager B1, alle rechte in system B'
+);
+
+insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+values (
+	103,
+	'498561de-d44d-4e58-9ce8-dc2dabd9b5b9',
+	'manager_C1',
+	'Manager C1',
+	'C',
+	3,
+	'2024-03-01 18:46:11'::timestamp with time zone,
+	null,
+	3600,
+	true,
+	true,
+	true,
+	false,
+	'Manager B1, alle rechte in system B'
+);
+
+insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+values (
+	201,
+	'2409775b-47cf-47a5-8b47-cc480a039c51',
+	'usermanager_A1',
+	'UserManager A1',
+	'A',
+	101,
+	'2024-03-01 18:46:11'::timestamp with time zone,
+	null,
+	3600,
+	true,
+	true,
+	false,
+	false,
+	'Manager für User A1, managed User im system A'
+);
+
+insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+values (
+	202,
+	'25f6e891-f4ec-44f8-b6a3-562bb1305f5f',
+	'usermanager_B1',
+	'UserManager B1',
+	'B',
+	102,
+	'2024-03-01 18:46:11'::timestamp with time zone,
+	null,
+	3600,
+	true,
+	true,
+	false,
+	false,
+	'Manager für User B1, managed User im system B'
+);
+
+insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+values (
+	203,
+	'3007f47c-e2a3-4720-9c66-c5e8dcf6046a',
+	'usermanager_C1',
+	'UserManager C1',
+	'C',
+	103,
+	'2024-03-01 18:46:11'::timestamp with time zone,
+	null,
+	3600,
+	true,
+	true,
+	false,
+	false,
+	'Manager für User C1, managed User im system C'
+);
+
+insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+values (
+	1001,
+	'33f66113-18ef-4330-927b-b62a2eba1c19',
+	'user A01',
+	'User A01',
+	'A',
+	201,
+	'2024-03-01 18:46:11'::timestamp with time zone,
+	null,
+	3600,
+	true,
+	true,
+	false,
+	false,
+	'User A01'
+);
+
+insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+values (
+	1002,
+	'de494af4-b2b5-459a-829b-b75fdf06db88',
+	'user A02',
+	'User A02',
+	'A',
+	201,
+	'2024-03-01 18:46:11'::timestamp with time zone,
+	null,
+	3600,
+	true,
+	true,
+	false,
+	false,
+	'User A02'
+);
+
+insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+values (
+	1003,
+	'539b8572-805d-4fd9-9f45-6c6aa40388f4',
+	'user A03',
+	'User A03',
+	'A',
+	201,
+	'2024-03-01 18:46:11'::timestamp with time zone,
+	null,
+	3600,
+	true,
+	true,
+	false,
+	false,
+	'User A03'
+);
+
+insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+values (
+	2001,
+	'a045d8b3-2000-4684-a6b4-b624b39a72b0',
+	'user B01',
+	'User B01',
+	'B',
+	202,
+	'2024-03-01 18:46:11'::timestamp with time zone,
+	null,
+	3600,
+	true,
+	true,
+	false,
+	false,
+	'User B01'
+);
+
+insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+values (
+	3001,
+	'b53212f5-05e8-4a82-8815-c2f0e133b325',
+	'user C01',
+	'User C01',
+	'C',
+	203,
+	'2024-03-01 18:46:11'::timestamp with time zone,
+	null,
+	3600,
+	true,
+	true,
+	false,
+	false,
+	'User C01'
+);
+
+
+--
+-- permissions
+--
+
+insert into permissions (permission_id, key, usr_id, keyring_id, system_id, granted_by, valid_from, valid_to, token_validity_time, active, comments)
+values (
+	1,
+	'a215e6d2-f202-4f19-a67a-8964cd24d0ed',
+	1001,
+	1,
+	'A',
+	101,
+	'2024-03-01 18:46:11'::timestamp with time zone,
+	null,
+	3600,
+	true,
+	'keyring 1 für user A01 vom system A'
+);
