@@ -44,7 +44,7 @@ create table if not exists doors (
 	comments text
 );
 
---- doors2systems
+--- doors_X_systems
 create table if not exists doors_X_systems (
 	door_id bigint references doors(door_id) not null,
 	system_door_id char(1) not null,                   -- id of the door in the system system_id
@@ -64,7 +64,7 @@ create table if not exists keyrings (
 	comments text,
 	unique (system_id, keyring_name),
 	unique (system_id, keyring_id),
-	check (not is_predefined and keyring_name = 'ALL')
+	check (not is_predefined or keyring_name = 'ALL')
 );
 
 ---
@@ -93,7 +93,7 @@ create table if not exists usr (
 	valid_to timestamp with time zone,
 	token_validity_time int not null default 0,		-- duration for token validity
 	active boolean not null default false,			-- is the user enabled
-	usermod boolean not null default false,			-- may this user modify other users
+	usermod boolean not null default false,			-- may this user add/modify other users
 	manager boolean not null default false,			-- may this add, modfiy doors, keys, ...
 	hidden boolean not null default false,			-- hide the user from the user list
 	comments text,
@@ -107,16 +107,15 @@ create table if not exists usr (
 --
 create table if not exists permissions (
 	permission_id bigint primary key default gen_random_bigint(),
-	keyring_id bigint references keyrings(keyring_id) not null,
+	key uuid unique not null default gen_random_uuid(),	-- user's permission uuid for logins
 	usr_id bigint references usr(usr_id) not null,
+	keyring_id bigint references keyrings(keyring_id) not null,
 	system_id char(1) references systems(system_id) not null,
 	granted_by bigint references usr(usr_id),		-- who enabled the user initially
 	valid_from timestamp with time zone,
 	valid_to timestamp with time zone,
 	token_validity_time int not null default 0,		-- duration for token validity
 	active boolean not null default false,			-- is the user enabled
-	keyupdate boolean not null default false,		-- may this user update the door keys of the keyring
-	hidden boolean not null default false,			-- hide permission from the list
 	comments text,
 	unique (usr_id, keyring_id),
 	foreign key (system_id, usr_id) references usr(system_id, usr_id),

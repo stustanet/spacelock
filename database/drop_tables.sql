@@ -1,9 +1,9 @@
-drop table permissions;
-drop table usr;
-drop table doors_X_keyrings;
-drop table keyrings;
-drop table doors_X_systems;
-drop table doors;
-drop table systems;
-drop table signing_keys;
-drop table systems;
+drop table permissions cascade;
+drop table usr cascade;
+drop table doors_X_keyrings cascade;
+drop table keyrings cascade;
+drop table doors_X_systems cascade;
+drop table doors cascade;
+drop table systems cascade;
+drop table signing_keys cascade;
+drop table systems cascade;

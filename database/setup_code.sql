@@ -9,7 +9,7 @@
 --
 -- add a key to the table of signing keys
 --
-create or replace function add_signing_key(
+create or replace function add_signing_key (
 	p_system_id char(1),
 	p_key_id char(1),
 	p_type char(1)
@@ -37,7 +37,7 @@ $$ language plpgsql
 --
 -- get the actual active signing key
 --
-create or replace function get_signing_key(
+create or replace function get_signing_key (
 	p_system_id char(1)
 ) returns setof active_signing_key_data as $$
 begin
@@ -53,7 +53,7 @@ $$ language plpgsql
 --
 -- create and sign a message
 --
-create or replace function create_message(
+create or replace function create_message (
 	p_system_id char(1),
 	p_payload_type char(1),
 	p_payload bytea,
@@ -104,7 +104,7 @@ $$ language plpgsql
 --
 -- the door then belongs to system <system>
 -- 
-create or replace function create_message_init_door(
+create or replace function create_message_init_door (
 	p_owner_system_id char(1),		-- system the door itself think it is belonging too
 	p_system_door_id char(1),		-- the id of the door
 	now_timestamp timestamp with time zone,
@@ -161,7 +161,7 @@ $$ language plpgsql
 --				system_door_id,owner_door_id,...
 --	\0
 --	
-create or replace function create_message_add_key(
+create or replace function create_message_add_key (
 	p_doors_owner_system_id char(1),
 	p_system_id char(1),
 	now_timestamp timestamp with time zone,
@@ -227,7 +227,7 @@ $$ language plpgsql
 --	doors           uft8-encodeder string
 --	\0
 --	
-create or replace function create_message_flush_keys(
+create or replace function create_message_flush_keys (
 	p_doors_owner_system_id char(1),
 	p_system_id char(1),
 	now_timestamp timestamp with time zone,
@@ -282,7 +282,7 @@ $$ language plpgsql
 --	doors           uft8-encodeder string
 --	\0
 --	
-create or replace function create_message_open_doors(
+create or replace function create_message_open_doors (
 	p_system_id char(1),
 	p_usr bigint,
 	p_now_timestamp timestamp with time zone
@@ -291,7 +291,9 @@ declare
 	l_door_string text;
 	l_valid_to timestamp with time zone;
 	l_token_validity_time int;
+	l_token_validity_iv interval;
 	l_user_token_validity_time int;
+	l_user_token_validity_iv interval;
 	l_user_valid_from timestamp with time zone;
 	l_user_valid_to timestamp with time zone;
 	l_payload bytea;
@@ -301,7 +303,8 @@ begin
 	from usr
 	where	    system_id = p_system_id and usr_id = p_usr
 		and active = true
-		and valid_from <= p_now_timestamp and p_now_timestamp < valid_to
+		and (valid_from is null or valid_from <= p_now_timestamp)
+		and (valid_to is null or p_now_timestamp < valid_to)
 	;
 
 	if not found then
@@ -314,8 +317,8 @@ begin
 	from	     doors as d
 		join doors_X_systems as dXs on d.door_id = dXs.door_id
 		join doors_X_keyrings as dXk
-			on dXk.system_door_id = dXs.system_door_id and sXk.system_id = dXs.system_id
-		join keyrings as k on k.system_id = dXk.system_id and k.keyring_id = d2k.keyring_id
+			on dXk.system_door_id = dXs.system_door_id and dXk.system_id = dXs.system_id
+		join keyrings as k on k.system_id = dXk.system_id and k.keyring_id = dXk.keyring_id
 		join permissions as p on p.system_id = k.system_id and p.keyring_id = k.keyring_id
 		join usr as u on u.system_id = p.system_id and u.usr_id = p.usr_id
 	where	    p.system_id = p_system_id and p.usr_id = p_usr
@@ -327,24 +330,28 @@ begin
 
 	if l_door_string is null then
 		l_door_string = '';
-		l_valid_to = 0;
+		l_valid_to = now();
 		l_token_validity_time = 0;
 	end if;
+	l_token_validity_iv = l_token_validity_time * interval '1 sec';
+	l_user_token_validity_iv = l_user_token_validity_time * interval '1 sec';
 
-	if l_token_validity_time > l_user_token_validity_time then
+	if l_token_validity_iv > l_user_token_validity_iv then
 		l_token_validity_time = l_user_token_validity_time;
+		l_token_validity_iv = l_user_token_validity_iv;
 	end if;
 	if l_valid_to > l_user_valid_to then
 		l_valid_to = l_user_valid_to;
 	end if;
-	if l_valid_to - p_now_timestamp < l_token_validity_time then
-		l_token_validity_time = l_valid_to - p_now_timestamp;
+	if l_valid_to - p_now_timestamp < l_token_validity_iv then
+		l_token_validity_iv = l_valid_to - p_now_timestamp;
+		l_token_validity_time = extract(epoch from l_token_validity_iv)::int;
 	end if;
 
 	l_payload = convert_to(l_door_string, 'UTF8') || '\x00'::bytea;
 
 	return create_message(
-		p_doors_owner_system_id,
+		p_system_id,
 		'O',
 		l_payload,
 		p_now_timestamp,
