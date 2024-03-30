@@ -290,10 +290,9 @@ create or replace function create_message_open_doors (
 declare
 	l_door_string text;
 	l_valid_to timestamp with time zone;
-	l_token_validity_time int;
-	l_token_validity_iv interval;
 	l_user_token_validity_time int;
 	l_user_token_validity_iv interval;
+	l_token_validity_time int;
 	l_user_valid_from timestamp with time zone;
 	l_user_valid_to timestamp with time zone;
 	l_payload bytea;
@@ -303,17 +302,19 @@ begin
 	from usr
 	where	    system_id = p_system_id and usr_id = p_usr
 		and active = true
-		and (valid_from is null or valid_from <= p_now_timestamp)
-		and (valid_to is null or p_now_timestamp < valid_to)
+		and valid_from <= p_now_timestamp
+		and p_now_timestamp <= valid_to
 	;
 
 	if not found then
 		return null;
 	end if;
 
+	l_user_token_validity_iv = l_user_token_validity_time * '1 sec'::interval;
+
 	select STRING_AGG(dXs.system_door_id, ''
-		order by dXs.system_door_id), min(p.valid_to), min(p.token_validity_time)
-	into l_door_string, l_valid_to, l_token_validity_time
+		order by dXs.system_door_id), min(p.valid_to)
+	into l_door_string, l_valid_to
 	from	     doors as d
 		join doors_X_systems as dXs on d.door_id = dXs.door_id
 		join doors_X_keyrings as dXk
@@ -323,30 +324,25 @@ begin
 		join usr as u on u.system_id = p.system_id and u.usr_id = p.usr_id
 	where	    p.system_id = p_system_id and p.usr_id = p_usr
 		and u.active = true and p.active = true
-		and u.valid_from <= p_now_timestamp and p_now_timestamp < u.valid_to
-		and (p.valid_from <= p_now_timestamp or p.valid_from is null)
-		and (p_now_timestamp < p.valid_to or p.valid_from is null)
+		and u.valid_from <= p_now_timestamp and p_now_timestamp <= u.valid_to
+		and p.valid_from <= p_now_timestamp and p_now_timestamp <= p.valid_to
 	;
 
 	if l_door_string is null then
 		l_door_string = '';
-		l_valid_to = now();
-		l_token_validity_time = 0;
+		l_valid_to = null;
 	end if;
-	l_token_validity_iv = l_token_validity_time * interval '1 sec';
-	l_user_token_validity_iv = l_user_token_validity_time * interval '1 sec';
 
-	if l_token_validity_iv > l_user_token_validity_iv then
-		l_token_validity_time = l_user_token_validity_time;
-		l_token_validity_iv = l_user_token_validity_iv;
-	end if;
-	if l_valid_to > l_user_valid_to then
+	if l_valid_to is null then
+		l_valid_to = l_user_valid_to;
+	elsif l_user_valid_to < l_valid_to then
 		l_valid_to = l_user_valid_to;
 	end if;
-	if l_valid_to - p_now_timestamp < l_token_validity_iv then
-		l_token_validity_iv = l_valid_to - p_now_timestamp;
-		l_token_validity_time = extract(epoch from l_token_validity_iv)::int;
+
+	if l_valid_to < p_now_timestamp + l_user_token_validity_iv then
+		l_user_token_validity_iv = l_valid_to - p_now_timestamp;
 	end if;
+	l_token_validity_time = extract(epoch from l_user_token_validity_iv)::int;
 
 	l_payload = convert_to(l_door_string, 'UTF8') || '\x00'::bytea;
 

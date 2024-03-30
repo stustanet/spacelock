@@ -83,23 +83,24 @@ create table if not exists doors_X_keyrings (
 -- users
 --
 create table if not exists usr (
-	usr_id bigint primary key default gen_random_bigint(),	-- user's 
-	key uuid unique not null default gen_random_uuid(),	-- user's uuid for logins
-	reqid text unique not null,				-- user's account creation request id
-	name text,						-- some name
+	usr_id bigint primary key default gen_random_bigint(),		-- user's 
+	key uuid unique not null default gen_random_uuid(),		-- user's uuid for logins
+	reqid text unique not null,					-- user's account creation request id
+	name text,							-- some name
 	system_id char(1) references systems(system_id) not null,
-	granted_by bigint references usr(usr_id),		-- who enabled the user initially
-	valid_from timestamp with time zone,
-	valid_to timestamp with time zone,
-	token_validity_time int not null default 0,		-- duration for token validity
-	active boolean not null default false,			-- is the user enabled
-	usermod boolean not null default false,			-- may this user add/modify other users
-	manager boolean not null default false,			-- may this add, modfiy doors, keys, ...
-	hidden boolean not null default false,			-- hide the user from the user list
+	granted_by bigint references usr(usr_id),			-- who enabled the user initially
+	valid_from timestamp with time zone not null default now(),
+	valid_to timestamp with time zone not null default 'infinity',
+	token_validity_time int not null default 0,			-- duration for token validity
+	active boolean not null default false,				-- is the user enabled
+	usermod boolean not null default false,				-- may this user add/modify other users
+	manager boolean not null default false,				-- may this add, modfiy doors, keys, ...
+	hidden boolean not null default false,				-- hide the user from the user list
 	comments text,
 	foreign key (granted_by, system_id) references usr(usr_id, system_id),
 	unique (system_id, usr_id),
-	unique (system_id, name)
+	unique (system_id, name),
+	check (token_validity_time >= 0 and token_validity_time < 32767*60)
 );
 
 --
@@ -107,15 +108,14 @@ create table if not exists usr (
 --
 create table if not exists permissions (
 	permission_id bigint primary key default gen_random_bigint(),
-	key uuid unique not null default gen_random_uuid(),	-- user's permission uuid for logins
+	key uuid unique not null default gen_random_uuid()	,	-- user's permission uuid for logins
 	usr_id bigint references usr(usr_id) not null,
 	keyring_id bigint references keyrings(keyring_id) not null,
 	system_id char(1) references systems(system_id) not null,
-	granted_by bigint references usr(usr_id),		-- who enabled the user initially
-	valid_from timestamp with time zone,
-	valid_to timestamp with time zone,
-	token_validity_time int not null default 0,		-- duration for token validity
-	active boolean not null default false,			-- is the user enabled
+	granted_by bigint references usr(usr_id),			-- who enabled the user initially
+	valid_from timestamp with time zone not null default now(),
+	valid_to timestamp with time zone not null default 'infinity',
+	active boolean not null default false,				-- is the user enabled
 	comments text,
 	unique (usr_id, keyring_id),
 	foreign key (system_id, usr_id) references usr(system_id, usr_id),
