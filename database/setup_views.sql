@@ -12,6 +12,12 @@ where is_active = true;
 
 create or replace view active_signing_key_data
 as
-select system_id, key_id, key_type, secret_key
+select system_id, key_id, key_type, secret_key, verify_key
+from signing_keys
+where is_active = true;
+
+create or replace view active_signing_key_pub_data
+as
+select system_id, key_id, key_type, verify_key
 from signing_keys
 where is_active = true;

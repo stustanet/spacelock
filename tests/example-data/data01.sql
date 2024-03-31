@@ -52,6 +52,19 @@ values (
 );
 
 
+insert into signing_keys (system_id, key_id, version, is_active, comments, key_type, secret_key, verify_key)
+values (
+	'B',
+	'B',
+	'2024-03-31 20:00:12.869867+02'::timestamp with time zone,
+	true,
+	'ein wirklich schöner schlüssel für system B',
+	'1',
+	'\x318ec1020e839a98e0cac48b693e770c554cd71965476988a355cdc91c9010814390f10f9cd72828ce9ed30c974b24f9ba796f0909d8dee2f1824e10abe2f1f2'::bytea,
+	'\x4390f10f9cd72828ce9ed30c974b24f9ba796f0909d8dee2f1824e10abe2f1f2'::bytea
+);
+
+
 --
 -- doors
 --
@@ -313,7 +326,7 @@ values (
 -- usr
 --
 
-insert into usr (usr_id,key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id,key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	1,
 	'46675c70-886d-409f-adb3-92e7eb2cd9b0',
@@ -326,12 +339,10 @@ values (
 	3600,
 	true,
 	true,
-	true,
-	true,
 	'Superadmin A, ausgang alle rechte in system A'
 );
 
-insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	2,
 	'b7ef10d5-1d98-4952-aac0-d19e49f23d97',
@@ -344,12 +355,10 @@ values (
 	3600,
 	true,
 	true,
-	true,
-	true,
 	'Superadmin A, ausgang alle rechte in system A'
 );
 
-insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	3,
 	'4bff6567-a1e7-4de5-8a3f-d42de9689a69',
@@ -362,12 +371,10 @@ values (
 	3600,
 	true,
 	true,
-	true,
-	true,
 	'Superadmin C, ausgang alle rechte in system C'
 );
 
-insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	101,
 	'88902ef8-0330-4f74-8ae9-d1a94391a697',
@@ -379,13 +386,11 @@ values (
 	'infinity',
 	3600,
 	true,
-	true,
-	true,
 	false,
 	'Manager A1, alle rechte in system A'
 );
 
-insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	102,
 	'7b8e050b-e3b1-4a76-b1c8-b9bc672db3a6',
@@ -397,13 +402,11 @@ values (
 	'infinity',
 	3600,
 	true,
-	true,
-	true,
 	false,
 	'Manager B1, alle rechte in system B'
 );
 
-insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	103,
 	'498561de-d44d-4e58-9ce8-dc2dabd9b5b9',
@@ -415,13 +418,11 @@ values (
 	'infinity',
 	3600,
 	true,
-	true,
-	true,
 	false,
 	'Manager B1, alle rechte in system B'
 );
 
-insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	201,
 	'2409775b-47cf-47a5-8b47-cc480a039c51',
@@ -433,13 +434,11 @@ values (
 	'infinity',
 	3600,
 	true,
-	true,
-	false,
 	false,
 	'Manager für User A1, managed User im system A'
 );
 
-insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	202,
 	'25f6e891-f4ec-44f8-b6a3-562bb1305f5f',
@@ -451,13 +450,11 @@ values (
 	'infinity',
 	3600,
 	true,
-	true,
-	false,
 	false,
 	'Manager für User B1, managed User im system B'
 );
 
-insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	203,
 	'3007f47c-e2a3-4720-9c66-c5e8dcf6046a',
@@ -469,13 +466,11 @@ values (
 	'infinity',
 	3600,
 	true,
-	true,
-	false,
 	false,
 	'Manager für User C1, managed User im system C'
 );
 
-insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	1001,
 	'33f66113-18ef-4330-927b-b62a2eba1c19',
@@ -487,13 +482,11 @@ values (
 	'infinity',
 	3600,
 	true,
-	true,
-	false,
 	false,
 	'User A01'
 );
 
-insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	1002,
 	'de494af4-b2b5-459a-829b-b75fdf06db88',
@@ -505,13 +498,11 @@ values (
 	'infinity',
 	3600,
 	true,
-	true,
-	false,
 	false,
 	'User A02'
 );
 
-insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	1003,
 	'539b8572-805d-4fd9-9f45-6c6aa40388f4',
@@ -523,13 +514,11 @@ values (
 	'infinity',
 	3600,
 	true,
-	true,
-	false,
 	false,
 	'User A03'
 );
 
-insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	2001,
 	'a045d8b3-2000-4684-a6b4-b624b39a72b0',
@@ -541,13 +530,11 @@ values (
 	'infinity',
 	3600,
 	true,
-	true,
-	false,
 	false,
 	'User B01'
 );
 
-insert into usr (usr_id, key, reqid, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, usermod, manager, hidden, comments)
+insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	3001,
 	'b53212f5-05e8-4a82-8815-c2f0e133b325',
@@ -559,8 +546,6 @@ values (
 	'infinity',
 	3600,
 	true,
-	true,
-	false,
 	false,
 	'User C01'
 );

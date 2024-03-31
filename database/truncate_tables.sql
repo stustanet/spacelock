@@ -1,3 +1,6 @@
+truncate table usr_X_roles cascade;
+truncate table roles_X_privs cascade;
+truncate table roles cascade;
 truncate table permissions cascade;
 truncate table usr cascade;
 truncate table doors_X_keyrings cascade;

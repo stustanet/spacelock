@@ -241,22 +241,22 @@ declare
 begin
 	select key_id, key_type
 	into l_active_key_id, l_active_key_type
-	from signing_keys
-	where system_id = p_system_id and is_active = true;
+	from active_signing_key_pub_data
+	where system_id = p_system_id;
 
 	if not found then
 		return null;
 	end if;
 
-	select STRING_AGG(system_door_id, '' order by system_door_id)
+	select STRING_AGG(dXs.system_door_id, '' order by dXs.system_door_id)
 	into l_door_string
-	from	     doors
-		join doors_X_systems on doors.door_id = doors_X_systems.door_id
-	where     doors.owner_system_id = p_doors_owner_system_id
-	      and doors_X_systems.system_id = p_system_id;
+	from	     doors as d
+		join doors_X_systems as dxs on d.door_id = dXs.door_id
+	where     d.owner_system_id = p_doors_owner_system_id
+	      and dXs.system_id = p_system_id;
 
 	if not found then
-		return null;
+		l_door_string = '';
 	end if;
 
 	l_payload =    convert_to(p_system_id || l_active_key_id, 'UTF8')
