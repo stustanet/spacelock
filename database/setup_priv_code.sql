@@ -49,7 +49,7 @@ create or replace function sign_message(
 
 	message = struct.pack(
 		'<IH',
-		int((p_now_timestamp - p_validity_window_size_sec) / 60),
+		int(p_now_timestamp/60),
 		int(p_validity_window_size_sec/60),
 	) + p_system_id.encode() + p_key_id.encode() + p_payload
 	signed_message = libnacl.crypto_sign(message, p_secret_key);
