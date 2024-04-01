@@ -119,15 +119,17 @@ declare
 begin
 	-- the door already has to belong to the new system
 	perform true from doors as d join doors_X_systems as dXs on d.door_id = dXs.door_id
-	where dXs.system_id = p_owner_system_id and dXs.system_door_id = p_system_door_id;
+	where	    dXs.system_id = p_owner_system_id
+		and dXs.system_door_id = p_system_door_id
+		and d.owner_system_id = p_owner_system_id;
 	if not found then
 		return null;
 	end if;
 
 	select key_id, key_type, verify_key
 	into l_key_id, l_key_type, l_verify_key
-	from signing_keys
-	where system_id = p_owner_system_id and is_active = true;
+	from active_signing_key_pub_data
+	where system_id = p_owner_system_id;
 	if not found then
 		return null;
 	end if;
@@ -177,7 +179,7 @@ declare
 begin
 	select key_id, key_type, verify_key, version
 	into l_new_key_id, l_new_key_type, l_new_verify_key, l_new_key_version
-	from signing_keys
+	from signing_key_pub_data
 	where system_id = p_system_id
 	order by version desc
 	limit 1;
