@@ -236,13 +236,17 @@ static void cpp_main_in_cpp()
 	    {
 		// message is not yet valid
 		uart_writeline("message is not yet valid, internal clock 0x", &current_timestamp);
+#ifndef DEBUG_EN
 		continue;
+#endif
 	    }
 	    if (valid_from + valid_time < current_timestamp)
 	    {
 		// mesage is no longer valid
 		uart_writeline("message is no longer valid, internal clock 0x", &current_timestamp);
+#ifndef DEBUG_EN
 		continue;
+#endif
 	    }
 	}
 
@@ -288,6 +292,7 @@ static void cpp_main_in_cpp()
 	    //write owner and keystore to flash
 	    owner_write();
 	    key_store_write();
+	    uart_writeline("door initialized");
 
 
 	    break;
@@ -372,6 +377,9 @@ static void cpp_main_in_cpp()
 		if (read_owner_door_id != owner_door_id)
 		{
 		    //we are not meant with this tupel
+#ifdef DEBUG_EN
+		    uart_writeline(".");
+#endif
 		    continue; //next tupel
 		}
 
@@ -399,6 +407,7 @@ static void cpp_main_in_cpp()
 		break;
 
 	    } while (target_door_id != 0);
+	    uart_writeline("command complete");
 
             break;
         }
@@ -416,7 +425,7 @@ static void cpp_main_in_cpp()
 	    //    uint8_t 0x00 stop
 
 
-	    // check, that the message is signed by the owner! only the owner may add key!
+	    // check, that the message is signed by the owner! only the owner may add and remove key!
 
 	    if (keystore[current_key_index].system_id != owner_system_id)
 	    {
@@ -452,6 +461,7 @@ static void cpp_main_in_cpp()
 		    }
 		}
 	    } while (target_door_id != 0);
+	    uart_writeline("command complete");
 
 	    break;
 	}
