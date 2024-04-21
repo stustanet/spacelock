@@ -12,6 +12,7 @@
 #include "time.h"
 #include "monocypher-ed25519.h"
 #include "utf8.h"
+#include "rtc.h"
 
 #include <cstring>
 
@@ -50,27 +51,6 @@ static void open_door(StepperMotor &motor)
     motor.set_mode(0);
 }
 
-static bool check_info(const uint8_t *info, uint32_t info_size)
-{
-    if (info_size < 1)
-    {
-        return false;
-    }
-
-    while (info_size)
-    {
-        if (*info < 0x20 || *info >= 0x7f)
-        {
-            // illegal character in info string
-            return false;
-        }
-
-        info++;
-        info_size -= 1;
-    }
-    return true;
-}
-
 /**
  * This function is not used in the code.
  * It exists so that it can be comfortably called
@@ -107,6 +87,26 @@ static void cpp_main_in_cpp()
 
     InputPin dcf77_pin(GPIOA, GPIO_PIN_8);
     dcf77_init(&dcf77_pin, &led_timestate);
+
+
+    //time handling via RTC
+    //read rtc
+    uint64_t current_unix_time = read_rtc();
+
+    if (current_unix_time > 3155803200) //rtc_read sometimes glitches, not sure why //TODO
+    {
+	//try again
+	current_unix_time = read_rtc();
+    }
+
+    //set offset
+    set_timestamp(time_get_64(), current_unix_time);
+
+    if (current_unix_time == 0) //needed to run this function from gdb
+    {
+	write_rtc(24,4,5,19,16,20,0);
+    }
+
 
     init_keystore();
 
@@ -227,12 +227,12 @@ static void cpp_main_in_cpp()
 	    //else Message is genuine
 
 	    // see if the timestamp is valid.
-	    uint32_t valid_from = deserialize_u32(&message->buf[SIG_SIZE]);
-	    uint16_t valid_time = deserialize_u16(&message->buf[SIG_SIZE+4]);
+	    uint32_t valid_from = deserialize_u32(&message->buf[SIG_SIZE]); //unix time in minutes
+	    uint16_t valid_time = deserialize_u16(&message->buf[SIG_SIZE+4]); //delta in minutes
 
 	    uint64_t current_timestamp = get_timestamp();
 
-	    if (valid_from > current_timestamp)
+	    if (valid_from > current_timestamp/60)
 	    {
 		// message is not yet valid
 		uart_writeline("message is not yet valid, internal clock 0x", &current_timestamp);
@@ -240,7 +240,7 @@ static void cpp_main_in_cpp()
 		continue;
 #endif
 	    }
-	    if (valid_from + valid_time < current_timestamp)
+	    if (valid_from + valid_time < current_timestamp/60)
 	    {
 		// mesage is no longer valid
 		uart_writeline("message is no longer valid, internal clock 0x", &current_timestamp);
