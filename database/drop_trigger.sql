@@ -1,0 +1,2 @@
+drop trigger if exists trigger_insert__systems__create_all_keyring on systems;
+drop trigger if exists trigger_insert__doors_X_systems__create_all_keyring on doors_X_systems;

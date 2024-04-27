@@ -1,2 +1,2 @@
-drop function sign_message;
-drop function create_signing_key_pair;
+drop function if exists sign_message;
+drop function if exists create_signing_key_pair;

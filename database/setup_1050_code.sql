@@ -5,7 +5,6 @@
 -- (c) 2019-2023 Jonas Jelten <jj@sft.lol>
 --
 
-
 --
 -- add a key to the table of signing keys
 --
@@ -49,6 +48,25 @@ end;
 $$ language plpgsql
    set search_path = "$user", public;
 	
+--
+-- signed_message type
+--
+--	this type is used as return type for the create_message functions
+--
+
+do $$ begin
+create type signed_message as (
+	system_id char(1),
+	key_id char(1),
+	key_type char(1),
+	verify_key bytea,
+	msg_timestamp timestamp with time zone,
+	validity_window_size_sec int,
+	signed_msg bytea
+);
+exception
+	when duplicate_object then null;
+end $$;
 
 --
 -- create and sign a message
@@ -59,16 +77,17 @@ create or replace function create_message (
 	p_payload bytea,
 	p_now_timestamp timestamp with time zone,
 	p_validity_window_size_sec int
-) returns bytea as $$
+) returns signed_message as $$
 declare
 	l_key_id char(1);
 	l_key_type char(1);
 	l_secret_key bytea;
+	l_verify_key bytea;
 	l_signed_message bytea;
 	l_now_utc_timestamp double precision;
 begin
-	select key_id, key_type, secret_key
-	into l_key_id, l_key_type, l_secret_key
+	select key_id, key_type, secret_key, verify_key
+	into l_key_id, l_key_type, l_secret_key, l_verify_key
 	from get_signing_key(p_system_id);
 	if not found then
 		return null;
@@ -86,7 +105,15 @@ begin
 		l_now_utc_timestamp,
 		p_validity_window_size_sec
 	);
-	return l_signed_message;
+	return (
+		p_system_id::char(1),
+		l_key_id::char(1),
+		l_key_type::char(1),
+		l_verify_key,
+		p_now_timestamp,
+		p_validity_window_size_sec,
+		l_signed_message
+	);
 end;
 $$ language plpgsql
    set search_path = "$user", public;
@@ -109,7 +136,7 @@ create or replace function create_message_init_door (
 	p_system_door_id char(1),		-- the id of the door
 	now_timestamp timestamp with time zone,
 	validity_window_size_sec int
-) returns bytea as $$
+) returns signed_message as $$
 declare
 	l_key_id char(1);
 	l_key_type char(1);
@@ -168,7 +195,7 @@ create or replace function create_message_add_key (
 	p_system_id char(1),
 	now_timestamp timestamp with time zone,
 	validity_window_size_sec int
-) returns bytea as $$
+) returns signed_message as $$
 declare
 	l_new_key_id char(1);
 	l_new_key_type char(1);
@@ -197,7 +224,8 @@ begin
 		join doors_X_systems as dXsO on d.door_id = dXsO.door_id
 	        join doors_X_systems as dXsS on dXsO.door_id = dXsS.door_id
 	where	d.owner_system_id = p_doors_owner_system_id
-		and dXsS.system_id = p_system_id;
+		and dXsS.system_id = p_system_id
+		and dXsO.system_id = p_doors_owner_system_id;
 
 	if l_door_string is null then
 		l_door_string := '';
@@ -234,7 +262,7 @@ create or replace function create_message_flush_keys (
 	p_system_id char(1),
 	now_timestamp timestamp with time zone,
 	validity_window_size_sec int
-) returns bytea as $$
+) returns signed_message as $$
 declare
 	l_active_key_id char(1);
 	l_active_key_type char(1);
@@ -288,7 +316,7 @@ create or replace function create_message_open_doors (
 	p_system_id char(1),
 	p_usr bigint,
 	p_now_timestamp timestamp with time zone
-) returns bytea as $$
+) returns signed_message as $$
 declare
 	l_door_string text;
 	l_valid_to timestamp with time zone;
@@ -355,6 +383,153 @@ begin
 		p_now_timestamp,
 		l_token_validity_time
 	);
+end;
+$$ language plpgsql
+   set search_path = "$user", public;
+
+
+--
+-- crypt passwort
+--
+create or replace function pw_crypt(
+	p_system_id char(1),
+	p_usr_pw text
+) returns text as $$
+begin
+	return crypt(p_usr_pw, '$2a$06$lolspacelock1337salt42');
+end;
+$$ language plpgsql
+   set search_path = "$user", public;
+
+--
+-- 
+--
+
+----
+---- trigger functions
+----
+
+--
+-- if a system is added, create a ALL keyring
+--	
+create or replace function trigger_insert__systems__create_all_keyring (
+) returns trigger as $$
+begin
+	insert into keyrings (
+		keyring_name,
+		is_predefined,
+		system_id
+	) values (
+		'ALL',
+		true,
+		NEW.system_id
+	);
+	return NEW;
+end;
+$$ language plpgsql
+   set search_path = "$user", public;
+
+--
+-- if a system is added, create a ALL keyring
+--	
+create or replace function trigger_insert__systems__create_default_roles_priv (
+) returns trigger as $$
+declare
+	l_superadmin_id bigint;
+	l_useradmin_id bigint;
+	l_dooradmin_id bigint;
+	r privs%rowtype;
+begin
+	insert into roles (
+		system_id,
+		role_name,
+		comment
+	) values (
+		NEW.system_id,
+		'SUPERADMIN',
+		'do not delete'
+	) returning role_id into l_superadmin_id;
+	insert into roles (
+		system_id,
+		role_name,
+		comment
+	) values (
+		NEW.system_id,
+		'USERADMIN',
+		'do not delete'
+	) returning role_id into l_useradmin_id;
+	insert into roles (
+		system_id,
+		role_name,
+		comment
+	) values (
+		NEW.system_id,
+		'DOORADMIN',
+		'do not delete'
+	) returning role_id into l_dooradmin_id;
+	for r in
+		select priv_id from privs
+	loop
+		insert into roles_X_privs (
+			priv_id,
+			role_id,
+			system_id
+		) values (
+			r.priv_id,
+			l_superadmin_id,
+			NEW.system_id
+		);
+		if r.priv_id >= 0 and r.priv_id < 2000 then
+			insert into roles_X_privs (
+				priv_id,
+				role_id,
+				system_id
+			) values (
+				r.priv_id,
+				l_useradmin_id,
+				NEW.system_id
+			);
+		elsif r.priv_id <= 2000 and r.priv_id < 5000 then
+			insert into roles_X_privs (
+				priv_id,
+				role_id,
+				system_id
+			) values (
+				r.priv_id,
+				l_dooradmin_id,
+				NEW.system_id
+			);
+		end if;
+	end loop;
+
+	return NEW;
+end;
+$$ language plpgsql
+   set search_path = "$user", public;
+
+
+--
+-- if a new door is added for a system, add it to the all keyring
+--
+create or replace function trigger_insert__doors_X_systems__create_all_keyring (
+) returns trigger as $$
+declare
+	l_keyring_id bigint;
+begin
+	select keyring_id into l_keyring_id
+	from keyrings as k
+	where k.is_predefined = true and k.system_id = NEW.system_id and k.keyring_name = 'ALL';
+
+	insert into doors_X_keyrings (
+		system_door_id,
+		system_id,
+		keyring_id
+	) values (
+		NEW.system_door_id,
+		NEW.system_id,
+		l_keyring_id
+	);
+	return NEW;
 end;
 $$ language plpgsql
    set search_path = "$user", public;

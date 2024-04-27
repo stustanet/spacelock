@@ -555,10 +555,9 @@ values (
 -- permissions
 --
 
-insert into permissions (permission_id, key, usr_id, keyring_id, system_id, granted_by, valid_from, valid_to, active, comments)
+insert into permissions (permission_id, usr_id, keyring_id, system_id, granted_by, valid_from, valid_to, active, comments)
 values (
 	1,
-	'a215e6d2-f202-4f19-a67a-8964cd24d0ed',
 	1001,
 	1,
 	'A',

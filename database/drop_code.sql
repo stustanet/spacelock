@@ -1,7 +1,10 @@
-drop function create_message_open_doors;
-drop function create_message_flush_keys;
-drop function create_message_add_key;
-drop function create_message_init_door;
-drop function create_message;
-drop function get_signing_key;
-drop function add_signing_key;
+drop function if exists create_message_open_doors;
+drop function if exists create_message_flush_keys;
+drop function if exists create_message_add_key;
+drop function if exists create_message_init_door;
+drop function if exists create_message;
+drop function if exists get_signing_key;
+drop function if exists add_signing_key;
+drop function if exists pw_crypt;
+drop function if exists trigger_insert__systems__create_all_keyring;
+drop function if exists trigger_insert__doors_X_systems__create_all_keyring;

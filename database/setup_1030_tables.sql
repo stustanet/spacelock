@@ -18,7 +18,7 @@ create table if not exists systems (
 );
 
 --
--- keys
+-- crypto keys
 --
 create table if not exists signing_keys (
 	system_id char(1) not null references systems(system_id) on delete cascade,
@@ -58,7 +58,7 @@ create table if not exists doors_X_systems (
 --- keyrings
 ---
 create table if not exists keyrings (
-	keyring_id bigint primary key,
+	keyring_id bigint primary key default gen_random_bigint(),
 	keyring_name text not null,
 	is_predefined boolean not null,
 	system_id char(1) not null references systems(system_id) on delete cascade,
@@ -89,7 +89,7 @@ create table if not exists doors_X_keyrings (
 --
 create table if not exists usr (
 	usr_id bigint primary key default gen_random_bigint(),		-- user's id
-	key uuid unique not null default gen_random_uuid(),		-- user's id / pw for logins
+	key text unique not null,					-- user's id / pw for logins
 	reqid uuid unique not null default gen_random_uuid(),		-- user's account creation request id
 	name text,							-- some name
 	ref text,							-- a reference to foreign database systems
@@ -114,7 +114,6 @@ create table if not exists usr (
 --
 create table if not exists permissions (
 	permission_id bigint primary key default gen_random_bigint(),
-	key uuid unique not null default gen_random_uuid(),		-- user's permission uuid for logins
 	usr_id bigint not null references usr(usr_id) on delete cascade,
 	keyring_id bigint not null references keyrings(keyring_id) on delete cascade,
 	system_id char(1) not null references systems(system_id) on delete cascade,
@@ -139,34 +138,34 @@ create table if not exists privs (
 insert into privs (
 	priv_id, priv_name, comments
 ) values (
-	  1, 'can_add_user', 'Can add a user'
+	   1, 'can_add_user', 'Can add a user'
 ), (
-	  2, 'can_mod_user', 'Can change an existing user'
+	   2, 'can_mod_user', 'Can change an existing user'
 ), (
-	  3, 'can_del_user', 'Can remove a user'
+	   3, 'can_del_user', 'Can remove a user'
 ), (
-	  4, 'can_prolonge_user', 'Can prolong a user'
+	   4, 'can_prolonge_user', 'Can prolong a user'
 ), (
-	100, 'can_add_mod_del_permissions', 'Can add/modify/delete permissions to a user'
+	2001, 'can_add_mod_del_door', 'Can add/modify/delete a door'
 ), (
-	101, 'can_add_mod_del_door', 'Can add/modify/delete a door'
+	3001, 'can_add_mod_del_keyring', 'Can add/modify/delete a keyring'
 ), (
-	201, 'can_add_mod_del_keyring', 'Can add/modify/delete a keyring'
+	4001, 'can_create_I_message', 'Can create a initialisation message for a door'
 ), (
-	301, 'can_add_mod_del_signing_key', 'Can add/modify/delete a signing key'
+	4002, 'can_create_U_message', 'Can create a U message to programm the newest signing key'
 ), (
-	401, 'can_create_I_message', 'Can create a initialisation message for a door'
+	4003, 'can_create_F_message', 'Can create a F message to delete all non active keys'
 ), (
-	402, 'can_create_U_message', 'Can create a U message to programm the newest signing key'
+	  -1, 'can_add_mod_del_signing_key', 'Can add/modify/delete a signing key'
 ), (
-	403, 'can_create_F_message', 'Can create a F message to delete all non active keys'
+	  -2, 'can_add_mod_del_permissions', 'Can add/modify/delete permissions to a user'
 ) on conflict do nothing;
 
 --
 -- roles
 --
 create table if not exists roles (
-	role_id bigint not null,
+	role_id bigint not null default gen_random_bigint(),
 	system_id char(1) not null references systems(system_id) on delete cascade,
 	role_name text not null,
 	comment text default '',

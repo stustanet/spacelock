@@ -1,1 +1,1 @@
-drop function gen_random_bigint;
+drop function if exists gen_random_bigint;

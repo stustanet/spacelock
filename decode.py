@@ -128,8 +128,8 @@ def main():
         print(f"key to add (type):     {add_key_type}")
         print(f"key to add (hex):      {bytes.hex(add_key)}")
         print(f"doorlist:              {doorlist}")
-        print(f"doorlist (owner):      {d1}")
         print(f"doorlist (key system): {d1}")
+        print(f"doorlist (owner):      {d2}")
     elif message_type == "I":
         ok, i, p_owner_system_id = utf8_decode_char(message, i)
         ok, i, p_owner_key_id = utf8_decode_char(message, i)
