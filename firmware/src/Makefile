@@ -22,7 +22,8 @@ TARGET = Heimdall
 # debug build?
 DEBUG = 1
 # optimization
-OPT = -Og
+OPT = -O1
+#OPT = -Og
 
 
 #######################################
@@ -55,6 +56,7 @@ Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_pwr.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash_ex.c \
+Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_crc.c \
 system_stm32f1xx.c \
 monocypher.c \
 monocypher-ed25519.c \

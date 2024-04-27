@@ -50,6 +50,7 @@ UART_HandleTypeDef huart1;
 TIM_HandleTypeDef htim1;
 ADC_HandleTypeDef hadc1;
 I2C_HandleTypeDef hi2c1;
+CRC_HandleTypeDef hcrc1;
 
 /* USER CODE BEGIN PV */
 
@@ -106,6 +107,11 @@ int main(void)
   I2C_Init();
   /* USER CODE BEGIN 2 */
   HAL_ADC_Start_IT (&hadc1);
+
+  __HAL_RCC_CRC_CLK_ENABLE();
+  hcrc1.Instance = CRC;
+  HAL_CRC_Init(&hcrc1);
+  
   cpp_main();
 
   /* USER CODE END 2 */

@@ -41,6 +41,8 @@ static void open_door(StepperMotor &motor)
         uart_writeline("N");
     }
 
+    //motor.rotate(1000000, 1000000 * 4, -1);
+
     motor.set_mode(0);
      sleep_us(1000000);
     motor.set_mode(-1);
@@ -86,7 +88,7 @@ static void cpp_main_in_cpp()
     OutputPin led_timestate(GPIOC, GPIO_PIN_14);
 
     InputPin dcf77_pin(GPIOA, GPIO_PIN_8);
-    dcf77_init(&dcf77_pin, &led_timestate);
+    //dcf77_init(&dcf77_pin, &led_timestate);
 
 
     //time handling via RTC
@@ -99,16 +101,28 @@ static void cpp_main_in_cpp()
 	current_unix_time = read_rtc();
     }
 
+    if (current_unix_time > 3155803200) //rtc_read sometimes glitches, not sure why //TODO
+    {
+	led_timestate.set(); //set LED to show we have a valid time
+    }
+
     //set offset
     set_timestamp(time_get_64(), current_unix_time);
 
+    // this is a dummy
     if (current_unix_time == 0) //needed to run this function from gdb
     {
 	write_rtc(24,4,5,19,16,20,0);
     }
-
-
+ 
     init_keystore();
+
+    if (used_store >2)
+    {
+	//no valid keystore found and not uninitialized
+	led_doorstate.reset();
+	led_timestate.reset();
+    }
 
     uart_writeline("Spacelock initialized! \U0001F389");
 
@@ -386,6 +400,14 @@ static void cpp_main_in_cpp()
 		//we found a tupel for us
 		
 		uart_writeline("trying to add new key");
+
+		verify_keystore();
+		if (used_store > 2)
+		{
+		    uart_writeline("keystore corruped");
+		    break;
+		}
+
 		uint8_t new_keyslot = get_free_key_slot();
 		if (new_keyslot == 0)
 		{
@@ -435,7 +457,14 @@ static void cpp_main_in_cpp()
 	    uint32_t target_system_id = deserialize_utf8(message->buf.data(), &offset, 1); //from this system we flush keys
 	    uint32_t target_key_id = deserialize_utf8(message->buf.data(), &offset, 1); //except this one we keep
 
-	    //check door_ids contains own door_id
+	    verify_keystore();
+	    if (used_store > 2)
+	    {
+		uart_writeline("keystore corruped");
+		break;
+	    }
+
+	    //check if door_ids contains own door_id
 	    do
 	    {
 		target_door_id = deserialize_utf8(message->buf.data(), &offset, 1);

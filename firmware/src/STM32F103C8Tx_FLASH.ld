@@ -68,7 +68,8 @@ MEMORY
 RAM (xrw)              : ORIGIN = 0x20000000, LENGTH = 20K
 FLASH (rx)             : ORIGIN =  0x8000000, LENGTH = 61K
 OWNER_STORAGE (rw)     : ORIGIN =  0x800f400, LENGTH =  1K
-KEY_STORAGE (rw)       : ORIGIN =  0x800f800, LENGTH =  2K
+KEY_STORAGE0 (rw)      : ORIGIN =  0x800f800, LENGTH =  1K
+KEY_STORAGE1 (rw)      : ORIGIN =  0x800fc00, LENGTH =  1K
 }
 
 /* Define output sections */
@@ -99,7 +100,8 @@ SECTIONS
     _etext = .;        /* define a global symbols at end of code */
   } >FLASH
 
-  .key_storage : {} > KEY_STORAGE
+  .key_storage0 : {} > KEY_STORAGE0
+  .key_storage1 : {} > KEY_STORAGE1
   .owner_storage : {} > OWNER_STORAGE
 
   /* Constant data goes into FLASH */
