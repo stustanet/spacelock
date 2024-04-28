@@ -1,16 +1,26 @@
 --
 -- compabitility code for old server
 --
-
 create or replace function compat_can_access(
 	p_system_id char(1),
 	p_usr_key text,
-	what access_class
+	what text
 ) returns bigint as $$
-declare usr_entry permissions%ROWTYPE;
-declare now_time timestamp with time zone;
+	declare usr_entry permissions%ROWTYPE;
+	declare now_time timestamp with time zone;
 begin
 	select now() into now_time;
+	select usr_id into l_usr_id usr_by_pw(p_system_id, p_usr_key);
+
+	if what = 'token' then
+		l_msg = create_message_open_doors(p_system_id, l_usr_id, now_time);
+		if l_msg is null then
+			return null
+		end if;
+		return l_usr_id;
+	end if;
+	if what = 'usermod' then
+	end if;
 
 	select * into usr_entry
 	from usr

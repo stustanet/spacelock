@@ -133,32 +133,33 @@ create table if not exists permissions (
 create table if not exists privs (
 	priv_id bigint primary key,
 	priv_name text unique not null,
+	priv_compat text,
 	comments text not null default ''
 );
 insert into privs (
-	priv_id, priv_name, comments
+	priv_id, priv_name, priv_compat, comments
 ) values (
-	   1, 'can_add_user', 'Can add a user'
+	   1, 'can_add_user', 'usermod', 'Can add a user'
 ), (
-	   2, 'can_mod_user', 'Can change an existing user'
+	   2, 'can_mod_user', 'usermod', 'Can change an existing user'
 ), (
-	   3, 'can_del_user', 'Can remove a user'
+	   3, 'can_del_user', 'usermod', 'Can remove a user'
 ), (
-	   4, 'can_prolonge_user', 'Can prolong a user'
+	   4, 'can_prolonge_user', 'usermod', 'Can prolong a user'
 ), (
-	2001, 'can_add_mod_del_door', 'Can add/modify/delete a door'
+	2001, 'can_add_mod_del_door', 'keyupdate', 'Can add/modify/delete a door'
 ), (
-	3001, 'can_add_mod_del_keyring', 'Can add/modify/delete a keyring'
+	3001, 'can_add_mod_del_keyring', 'keyupdate', 'Can add/modify/delete a keyring'
 ), (
-	4001, 'can_create_I_message', 'Can create a initialisation message for a door'
+	4001, 'can_create_I_message', 'keyupdate', 'Can create a initialisation message for a door'
 ), (
-	4002, 'can_create_U_message', 'Can create a U message to programm the newest signing key'
+	4002, 'can_create_U_message', 'keyupdate', 'Can create a U message to programm the newest signing key'
 ), (
-	4003, 'can_create_F_message', 'Can create a F message to delete all non active keys'
+	4003, 'can_create_F_message', 'keyupdate', 'Can create a F message to delete all non active keys'
 ), (
-	  -1, 'can_add_mod_del_signing_key', 'Can add/modify/delete a signing key'
+	  -1, 'can_add_mod_del_signing_key', null, 'Can add/modify/delete a signing key'
 ), (
-	  -2, 'can_add_mod_del_permissions', 'Can add/modify/delete permissions to a user'
+	  -2, 'can_add_mod_del_privs', null, 'Can add/modify/delete privileges to a user'
 ) on conflict do nothing;
 
 --

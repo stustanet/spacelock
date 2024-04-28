@@ -1,2 +1,3 @@
+drop trigger if exists trigger_insert__doors_X_systems__add_to_all_keyring on doors_X_systems;
+drop trigger if exists trigger_insert__systems__create_default_roles_priv on systems
 drop trigger if exists trigger_insert__systems__create_all_keyring on systems;
-drop trigger if exists trigger_insert__doors_X_systems__create_all_keyring on doors_X_systems;

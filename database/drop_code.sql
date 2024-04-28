@@ -1,3 +1,10 @@
+drop function if exists trigger_insert__doors_X_systems__add_to_all_keyring;
+drop function if exists trigger_insert__systems__create_default_roles_priv
+drop function if exists trigger_insert__systems__create_all_keyring;
+drop function if exists usr_by_pw;
+drop function if exists pw_crypt;
+drop function if exists usr_has_compat_priv;
+drop function if exists usr_has_priv;
 drop function if exists create_message_open_doors;
 drop function if exists create_message_flush_keys;
 drop function if exists create_message_add_key;
@@ -7,4 +14,3 @@ drop function if exists get_signing_key;
 drop function if exists add_signing_key;
 drop function if exists pw_crypt;
 drop function if exists trigger_insert__systems__create_all_keyring;
-drop function if exists trigger_insert__doors_X_systems__create_all_keyring;

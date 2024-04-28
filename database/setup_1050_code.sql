@@ -8,7 +8,7 @@
 --
 -- add a key to the table of signing keys
 --
-create or replace function add_signing_key (
+create or replace function add_signing_key(
 	p_system_id char(1),
 	p_key_id char(1),
 	p_type char(1)
@@ -36,7 +36,7 @@ $$ language plpgsql
 --
 -- get the actual active signing key
 --
-create or replace function get_signing_key (
+create or replace function get_signing_key(
 	p_system_id char(1)
 ) returns setof active_signing_key_data as $$
 begin
@@ -71,7 +71,7 @@ end $$;
 --
 -- create and sign a message
 --
-create or replace function create_message (
+create or replace function create_message(
 	p_system_id char(1),
 	p_payload_type char(1),
 	p_payload bytea,
@@ -131,7 +131,7 @@ $$ language plpgsql
 --
 -- the door then belongs to system <system>
 -- 
-create or replace function create_message_init_door (
+create or replace function create_message_init_door(
 	p_owner_system_id char(1),		-- system the door itself think it is belonging too
 	p_system_door_id char(1),		-- the id of the door
 	now_timestamp timestamp with time zone,
@@ -190,7 +190,7 @@ $$ language plpgsql
 --				system_door_id,owner_door_id,...
 --	\0
 --	
-create or replace function create_message_add_key (
+create or replace function create_message_add_key(
 	p_doors_owner_system_id char(1),
 	p_system_id char(1),
 	now_timestamp timestamp with time zone,
@@ -257,7 +257,7 @@ $$ language plpgsql
 --	doors           uft8-encodeder string
 --	\0
 --	
-create or replace function create_message_flush_keys (
+create or replace function create_message_flush_keys(
 	p_doors_owner_system_id char(1),
 	p_system_id char(1),
 	now_timestamp timestamp with time zone,
@@ -312,9 +312,9 @@ $$ language plpgsql
 --	doors           uft8-encodeder string
 --	\0
 --	
-create or replace function create_message_open_doors (
+create or replace function create_message_open_doors(
 	p_system_id char(1),
-	p_usr bigint,
+	p_usr_id bigint,
 	p_now_timestamp timestamp with time zone
 ) returns signed_message as $$
 declare
@@ -330,7 +330,7 @@ begin
 	select valid_from, valid_to, token_validity_time
 	into l_user_valid_from, l_user_valid_to, l_user_token_validity_time
 	from usr
-	where	    system_id = p_system_id and usr_id = p_usr
+	where	    system_id = p_system_id and usr_id = p_usr_id
 		and active = true
 		and valid_from <= p_now_timestamp
 		and p_now_timestamp <= valid_to
@@ -352,7 +352,7 @@ begin
 		join keyrings as k on k.system_id = dXk.system_id and k.keyring_id = dXk.keyring_id
 		join permissions as p on p.system_id = k.system_id and p.keyring_id = k.keyring_id
 		join usr as u on u.system_id = p.system_id and u.usr_id = p.usr_id
-	where	    p.system_id = p_system_id and p.usr_id = p_usr
+	where	    p.system_id = p_system_id and p.usr_id = p_usr_id
 		and u.active = true and p.active = true
 		and u.valid_from <= p_now_timestamp and p_now_timestamp <= u.valid_to
 		and p.valid_from <= p_now_timestamp and p_now_timestamp <= p.valid_to
@@ -387,6 +387,61 @@ end;
 $$ language plpgsql
    set search_path = "$user", public;
 
+--
+-- check privileges
+--
+create or replace function usr_has_priv(
+	p_system_id char(1),
+	p_usr_id bigint,
+	p_priv_name text,
+	p_when timestamp with time zone
+) returns boolean as $$
+begin
+	if p_when is null then
+		select into p_when now();
+	end if;
+	perform *
+	from usr
+	join usr_X_roles as uXr on usr.usr_id = uXr.usr_id and usr.system_id = uXr.system_id
+	join roles_X_privs as rXp on uXr.role_id = rXp.role_id and uXr.system_id = rXp.system_id
+	join privs on rXp.priv_id = privs.priv_id
+	where 	    usr.system_id = p_system_id
+		and usr.usr_id = p_usr_id
+		and privs.priv_name = p_priv_name
+		and usr.valid_from <= p_when and p_when <= usr.valid_to
+		and uXr.valid_from <= p_when and p_when <= uXr.valid_to;
+	return found;
+end;
+$$ language plpgsql
+   set search_path = "$user", public;
+
+--
+-- check compat privileges
+--
+create or replace function usr_has_compat_priv(
+	p_system_id char(1),
+	p_usr_id bigint,
+	p_priv_compat text,
+	p_when timestamp with time zone
+) returns boolean as $$
+begin
+	if p_when is null then
+		select into p_when now();
+	end if;
+	perform *
+	from usr
+	join usr_X_roles as uXr on usr.usr_id = uXr.usr_id and usr.system_id = uXr.system_id
+	join roles_X_privs as rXp on uXr.role_id = rXp.role_id and uXr.system_id = rXp.system_id
+	join privs on rXp.priv_id = privs.priv_id
+	where 	    usr.system_id = p_system_id
+		and usr.usr_id = p_usr_id
+		and privs.priv_compat = p_priv_compat
+		and usr.valid_from <= p_when and p_when <= usr.valid_to
+		and uXr.valid_from <= p_when and p_when <= uXr.valid_to;
+	return found;
+end;
+$$ language plpgsql
+   set search_path = "$user", public;
 
 --
 -- crypt passwort
@@ -402,8 +457,24 @@ $$ language plpgsql
    set search_path = "$user", public;
 
 --
--- 
+-- search usr by pw
 --
+create or replace function usr_by_pw(
+	p_system_id char(1),
+	p_usr_pw text
+) returns usr as $$
+declare
+	l_pwc text;
+	l_usr usr;
+begin
+	select into l_pwc pw_crypt(p_system_id, p_usr_pw);
+	select * into l_usr from usr
+	where key = l_pwc and system_id = p_system_id;
+	return l_usr;
+end;
+$$ language plpgsql
+   set search_path = "$user", public;
+
 
 ----
 ---- trigger functions
@@ -489,7 +560,7 @@ begin
 				l_useradmin_id,
 				NEW.system_id
 			);
-		elsif r.priv_id <= 2000 and r.priv_id < 5000 then
+		elsif r.priv_id >= 2000 and r.priv_id < 5000 then
 			insert into roles_X_privs (
 				priv_id,
 				role_id,
@@ -511,7 +582,7 @@ $$ language plpgsql
 --
 -- if a new door is added for a system, add it to the all keyring
 --
-create or replace function trigger_insert__doors_X_systems__create_all_keyring (
+create or replace function trigger_insert__doors_X_systems__add_to_all_keyring (
 ) returns trigger as $$
 declare
 	l_keyring_id bigint;

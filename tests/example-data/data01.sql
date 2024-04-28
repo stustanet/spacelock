@@ -329,7 +329,7 @@ values (
 insert into usr (usr_id,key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	1,
-	'46675c70-886d-409f-adb3-92e7eb2cd9b0',
+	pw_crypt('A', '46675c70-886d-409f-adb3-92e7eb2cd9b0'),
 	'superadmin_A',
 	'Superadmin A',
 	'A',
@@ -345,7 +345,7 @@ values (
 insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	2,
-	'b7ef10d5-1d98-4952-aac0-d19e49f23d97',
+	pw_crypt('A', 'b7ef10d5-1d98-4952-aac0-d19e49f23d97'),
 	'superadmin_B',
 	'Superadmin B',
 	'B',
@@ -361,7 +361,7 @@ values (
 insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	3,
-	'4bff6567-a1e7-4de5-8a3f-d42de9689a69',
+	pw_crypt('C', '4bff6567-a1e7-4de5-8a3f-d42de9689a69'),
 	'superadmin_C',
 	'Superadmin C',
 	'C',
@@ -377,7 +377,7 @@ values (
 insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	101,
-	'88902ef8-0330-4f74-8ae9-d1a94391a697',
+	pw_crypt('A', '88902ef8-0330-4f74-8ae9-d1a94391a697'),
 	'manager_A1',
 	'Manager A1',
 	'A',
@@ -393,7 +393,7 @@ values (
 insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	102,
-	'7b8e050b-e3b1-4a76-b1c8-b9bc672db3a6',
+	pw_crypt('B', '7b8e050b-e3b1-4a76-b1c8-b9bc672db3a6'),
 	'manager_B1',
 	'Manager B1',
 	'B',
@@ -409,7 +409,7 @@ values (
 insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	103,
-	'498561de-d44d-4e58-9ce8-dc2dabd9b5b9',
+	pw_crypt('C', '498561de-d44d-4e58-9ce8-dc2dabd9b5b9'),
 	'manager_C1',
 	'Manager C1',
 	'C',
@@ -425,7 +425,7 @@ values (
 insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	201,
-	'2409775b-47cf-47a5-8b47-cc480a039c51',
+	pw_crypt('A', '2409775b-47cf-47a5-8b47-cc480a039c51'),
 	'usermanager_A1',
 	'UserManager A1',
 	'A',
@@ -441,7 +441,7 @@ values (
 insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	202,
-	'25f6e891-f4ec-44f8-b6a3-562bb1305f5f',
+	pw_crypt('B', '25f6e891-f4ec-44f8-b6a3-562bb1305f5f'),
 	'usermanager_B1',
 	'UserManager B1',
 	'B',
@@ -457,7 +457,7 @@ values (
 insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	203,
-	'3007f47c-e2a3-4720-9c66-c5e8dcf6046a',
+	pw_crypt('C', '3007f47c-e2a3-4720-9c66-c5e8dcf6046a'),
 	'usermanager_C1',
 	'UserManager C1',
 	'C',
@@ -473,7 +473,7 @@ values (
 insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	1001,
-	'33f66113-18ef-4330-927b-b62a2eba1c19',
+	pw_crypt('A', '33f66113-18ef-4330-927b-b62a2eba1c19'),
 	'user A01',
 	'User A01',
 	'A',
@@ -489,7 +489,7 @@ values (
 insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	1002,
-	'de494af4-b2b5-459a-829b-b75fdf06db88',
+	pw_crypt('A', 'de494af4-b2b5-459a-829b-b75fdf06db88'),
 	'user A02',
 	'User A02',
 	'A',
@@ -505,7 +505,7 @@ values (
 insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	1003,
-	'539b8572-805d-4fd9-9f45-6c6aa40388f4',
+	pw_crypt('A', '539b8572-805d-4fd9-9f45-6c6aa40388f4'),
 	'user A03',
 	'User A03',
 	'A',
@@ -521,7 +521,7 @@ values (
 insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	2001,
-	'a045d8b3-2000-4684-a6b4-b624b39a72b0',
+	pw_crypt('B', 'a045d8b3-2000-4684-a6b4-b624b39a72b0'),
 	'user B01',
 	'User B01',
 	'B',
@@ -537,7 +537,7 @@ values (
 insert into usr (usr_id, key, ref, name, system_id, granted_by, valid_from, valid_to, token_validity_time, active, hidden, comments)
 values (
 	3001,
-	'b53212f5-05e8-4a82-8815-c2f0e133b325',
+	pw_crypt('C', 'b53212f5-05e8-4a82-8815-c2f0e133b325'),
 	'user C01',
 	'User C01',
 	'C',
