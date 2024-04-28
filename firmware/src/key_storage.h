@@ -19,7 +19,7 @@ extern uint8_t used_store;
 
 void init_keystore(void);
 void load_keystore(void);
-void verify_keystore(void);
+uint8_t verify_keystore(void);
 
 uint8_t get_key_index(uint32_t system_id, uint32_t key_id, uint32_t key_type);
 uint8_t get_free_key_slot(void);

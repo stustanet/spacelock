@@ -107,7 +107,7 @@ void load_keystore()
 
 
 
-void verify_keystore(void)
+uint8_t verify_keystore(void)
 {
     //check crc of store in RAM and load new from flash corrupted
 
@@ -119,6 +119,7 @@ void verify_keystore(void)
 	if (store_ram_crc != keystore_flash0_crc)
 	{
 	    load_keystore();
+	    return 0;
 	}
 
     }
@@ -127,14 +128,16 @@ void verify_keystore(void)
 	if (store_ram_crc != keystore_flash1_crc)
 	{
 	    load_keystore();
+	    return 0;
 	}
     }
     else
     {
 	//no keystore was loaded, pointless to check
+	return 0;
     }
 
-    return;
+    return 1;
 }
 
 

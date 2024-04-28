@@ -19,6 +19,7 @@
 
 static void cpp_main_in_cpp();
 static void open_door(StepperMotor &motor);
+uint8_t sync_time_from_rtc(void);
 
 static void open_door(StepperMotor &motor)
 {
@@ -64,6 +65,36 @@ void reset_secret_key()
     //secret_key_write((unsigned char *)"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
 }
 
+uint8_t sync_time_from_rtc(void)
+{
+
+    //time handling via RTC
+    //read rtc
+    uint64_t current_unix_time = read_rtc();
+
+    if (current_unix_time > 3155803200) //rtc_read sometimes glitches, not sure why //TODO
+    {
+	//try again
+	current_unix_time = read_rtc();
+    }
+
+    if (current_unix_time > 3155803200) //rtc_read sometimes glitches, not sure why //TODO
+    {
+	return 0; //error
+    }
+
+    //set offset
+    set_timestamp(time_get_64(), current_unix_time);
+
+    // this is a dummy
+    if (current_unix_time == 0) //need to run this function from gdb
+    {
+	write_rtc(24,4,5,19,16,20,0);
+    }
+
+    return 1;
+}
+
 static void cpp_main_in_cpp()
 {
     StepperMotor motor(
@@ -91,28 +122,10 @@ static void cpp_main_in_cpp()
     //dcf77_init(&dcf77_pin, &led_timestate);
 
 
-    //time handling via RTC
-    //read rtc
-    uint64_t current_unix_time = read_rtc();
-
-    if (current_unix_time > 3155803200) //rtc_read sometimes glitches, not sure why //TODO
+    if (!sync_time_from_rtc())
     {
-	//try again
-	current_unix_time = read_rtc();
-    }
-
-    if (current_unix_time > 3155803200) //rtc_read sometimes glitches, not sure why //TODO
-    {
-	led_timestate.set(); //set LED to show we have a valid time
-    }
-
-    //set offset
-    set_timestamp(time_get_64(), current_unix_time);
-
-    // this is a dummy
-    if (current_unix_time == 0) //needed to run this function from gdb
-    {
-	write_rtc(24,4,5,19,16,20,0);
+	//it failed
+	led_timestate.reset();
     }
  
     init_keystore();
@@ -128,6 +141,37 @@ static void cpp_main_in_cpp()
 
     while (1)
     {
+
+	uint64_t current_timestamp = get_timestamp();
+
+	//do some housekeeping
+	if ((current_timestamp%(3600*24)) == 0)
+	{
+	    //once a day
+	    led_timestate.reset();
+	    if (!verify_keystore())
+	    {
+		led_doorstate.reset();
+	    }
+	    if (sync_time_from_rtc())
+	    {
+		led_timestate.set();
+	    }
+	} else if (current_timestamp%60 == 0)
+	{
+	    //every start of a minute
+	    led_timestate.reset();
+	} else if ((current_timestamp%60 == 1) && (current_timestamp%3600 > 59))
+	{
+	    //one second later, but not in the first minute of the hour
+	    led_timestate.set();
+	} else if (current_timestamp%3600 >= 30)
+	{
+	    //for the first minute of the hour
+	    led_timestate.set();
+	}
+
+
         UARTRxBuffer *message = uart_poll_message();
         if (message == nullptr)
         {
@@ -244,7 +288,7 @@ static void cpp_main_in_cpp()
 	    uint32_t valid_from = deserialize_u32(&message->buf[SIG_SIZE]); //unix time in minutes
 	    uint16_t valid_time = deserialize_u16(&message->buf[SIG_SIZE+4]); //delta in minutes
 
-	    uint64_t current_timestamp = get_timestamp();
+	    current_timestamp = get_timestamp();
 
 	    if (valid_from > current_timestamp/60)
 	    {
