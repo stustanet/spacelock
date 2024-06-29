@@ -6,6 +6,7 @@ import struct
 import libnacl
 import base64
 import pyqrcode
+import json
 
 HMAC_SIZE = 16
 DT_FMT = '%Y-%m-%d %H:%M:%S %Z'
@@ -75,13 +76,7 @@ def format_datetime(value):
     return dt.astimezone().strftime(DT_FMT)
 
 
-def main():
-    cli = argparse.ArgumentParser()
-    cli.add_argument('verify_key_hex')
-    cli.add_argument('message_hex')
-    cli.add_argument('--qr', action="store_true")
-    args = cli.parse_args()
-
+def check_msg(cli, args):
     verify_key = bytes.fromhex(args.verify_key_hex.removeprefix("\\x"));
     signed_message = bytes.fromhex(args.message_hex.removeprefix("\\x"));
     signed_message_b64 = base64.b64encode(signed_message).decode();
@@ -145,6 +140,36 @@ def main():
     if args.qr:
         qrcode = pyqrcode.create(signed_message_b64);
         print(qrcode.terminal());
+
+def check_token(cli, args):
+    token = json.loads(args.token)
+    msg = base64.b64decode(token['token']).hex()
+    valid_until = token['valid_until']
+    arglist = [ "check-msg", args.verify_key_hex, msg ]
+    if args.qr:
+        arglist.insert(0, "--qr")
+    args = cli.parse_args(arglist)
+    check_msg(cli, args)
+
+
+def main():
+    cli = argparse.ArgumentParser()
+    cli.add_argument("--qr", action="store_true")
+    subclis = cli.add_subparsers()
+
+    subcli_check_msg = subclis.add_parser("check-msg")
+    subcli_check_msg.add_argument("verify_key_hex")
+    subcli_check_msg.add_argument("message_hex")
+    subcli_check_msg.set_defaults(func=check_msg)
+
+    subcli_check_token = subclis.add_parser("check-token")
+    subcli_check_token.add_argument("verify_key_hex")
+    subcli_check_token.add_argument("token")
+    subcli_check_token.set_defaults(func=check_token)
+
+    args = cli.parse_args()
+    args.func(cli, args)
+
 
 if __name__ == '__main__':
     main()
