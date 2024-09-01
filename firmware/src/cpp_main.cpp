@@ -70,11 +70,13 @@ uint8_t sync_time_from_rtc(void)
 
     //time handling via RTC
     //read rtc
+    sleep_us(1000000);
     uint64_t current_unix_time = read_rtc();
 
-    if (current_unix_time > 3155803200) //rtc_read sometimes glitches, not sure why //TODO
+    if ((current_unix_time > 3155803200)||(current_unix_time < 1600000000)) //rtc_read sometimes glitches, not sure why //TODO
     {
 	//try again
+	sleep_us(1000000);
 	current_unix_time = read_rtc();
     }
 
@@ -126,6 +128,7 @@ static void cpp_main_in_cpp()
     {
 	//it failed
 	led_timestate.reset();
+	uart_writeline("Time read from RTC invalid! \U0001F389");
     }
  
     init_keystore();
@@ -135,6 +138,11 @@ static void cpp_main_in_cpp()
 	//no valid keystore found and not uninitialized
 	led_doorstate.reset();
 	led_timestate.reset();
+	uart_writeline("no valid keystore found and not uninit! \U0001F389");
+    }
+    if (owner_system_id == 0 && owner_door_id == 0)
+    {
+	uart_writeline("Spacelock not owned! \U0001F389");
     }
 
     uart_writeline("Spacelock initialized! \U0001F389");
