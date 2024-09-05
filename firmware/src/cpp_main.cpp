@@ -165,6 +165,8 @@ static void cpp_main_in_cpp()
 	    {
 		led_timestate.set();
 	    }
+	    sleep_us(1000000);
+
 	} else if (current_timestamp%60 == 0)
 	{
 	    //every start of a minute
@@ -173,7 +175,7 @@ static void cpp_main_in_cpp()
 	{
 	    //one second later, but not in the first minute of the hour
 	    led_timestate.set();
-	} else if (current_timestamp%3600 >= 30)
+	} else if (current_timestamp%3600 >= 60)
 	{
 	    //for the first minute of the hour
 	    led_timestate.set();
@@ -417,6 +419,14 @@ static void cpp_main_in_cpp()
 	    uint32_t new_key_id = deserialize_utf8(message->buf.data(), &offset, 1);
 	    uint32_t new_key_type = deserialize_utf8(message->buf.data(), &offset, 1);
 
+	    //check if this key is already in keystore...
+	    if (get_key_index(new_system_id, new_key_id, new_key_type) != 0)
+	    {
+		//key already exists in keystore
+		uart_writeline("key is already in keystore");
+		break;
+	    }
+
 	    uint16_t key_offset = offset;
 	    //jump over key
 	    offset += 32;
@@ -489,9 +499,9 @@ static void cpp_main_in_cpp()
 	{
             // 'flush' message. remove all keys of system, except specified key. only owner may do this
             // payload:
-            //    1x utf-8 system_id
-	    //    1x utf-8 key_id
-	    //    1x utf-8 door_id1
+            //    1x utf-8 system_id for keys to delete
+	    //    1x utf-8 key_id of the key to retain
+	    //    1x utf-8 door_id1 in this system, not the owner system
 	    //    (1y utf-8 door_id2)
 	    //    .
 	    //    .
@@ -503,7 +513,7 @@ static void cpp_main_in_cpp()
 
 	    if (keystore[current_key_index].system_id != owner_system_id)
 	    {
-		uart_writeline("add key not allowed");
+		uart_writeline("flush key not allowed");
 		break;
 	    }
 	    uint32_t target_system_id = deserialize_utf8(message->buf.data(), &offset, 1); //from this system we flush keys
@@ -516,11 +526,21 @@ static void cpp_main_in_cpp()
 		break;
 	    }
 
-	    //check if door_ids contains own door_id
+	    uint8_t key_to_retain_index = get_key_index(target_system_id, target_key_id, '1'); //get the index of the key to retain
+
+	    if (key_to_retain_index == 0)
+	    {
+		//the key is not in store
+		//Abort with noise TODO
+		uart_writeline("error: key to retain not in keystore");
+		break;
+	    }
+
+	    //check if door_ids contains own door_id in this system
 	    do
 	    {
 		target_door_id = deserialize_utf8(message->buf.data(), &offset, 1);
-		if (target_door_id == keystore[current_key_index].door_id)
+		if (target_door_id == keystore[key_to_retain_index].door_id)
 		{
 		    // it seems like you're in luck.
 		    uart_writeline("door action is requested");

@@ -215,6 +215,7 @@ uint8_t remove_system_except_one_key(uint32_t system_id, uint32_t key_id_retain)
 	    keystore[i].key_id = 0;
 	    keystore[i].key_type = 0;
 	    keystore[i].door_id = 0;
+	    memset(keystore[i].key, 0, 32);
 	    keys_removed++;
 
 	}
