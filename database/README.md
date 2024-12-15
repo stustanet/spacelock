@@ -11,7 +11,7 @@ Needs PostgreSQL.
 - as postgres
     - create role
     - create database owner role
-    - load `setup_1010_base.sql` to activate extensions `plpython3u` and `pgcrypto`
+    - load `setup_0110_base.sql` to activate extensions `plpython3u` and `pgcrypto`
     - load as user postgres `setup_0150_priv_code.sql` (because has extension language functions that need superuser privileges)
 - as role user
     - load `setup_1020_code_table.sql` (functions that are used in tables)
