@@ -1,21 +1,25 @@
-{% extends "base.html" %}
-
-{% block content %}
-  <div class="card">
-    <div class="card-header">
-      <h5 class="card-title">Hackerspace Access</h5>
-    </div>
-    <div class="card-body">
-      <form action="/" method="post">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="card-text">
-          <div class="form-group">
-            <label for="input-key">Password</label>
-            <input type="password" class="form-control" id="input-key" name='secret_key' placeholder="Password">
-          </div>
-        </div>
-        <button type="submit" class="btn btn-primary float-right">Submit</button>
-      </form>
-    </div>
+{% extends "base.html" %} {% block content %}
+<div class="card">
+  <div class="card-header">
+    <h5 class="card-title">System Access</h5>
   </div>
+  <div class="card-body">
+    <form action="/" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div class="card-text">
+        <div class="form-group">
+          <label for="input-key">Password</label>
+          <input
+            type="password"
+            class="form-control"
+            id="input-key"
+            name="secret_key"
+            placeholder="Password"
+          />
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary float-right">Submit</button>
+    </form>
+  </div>
+</div>
 {% endblock %}

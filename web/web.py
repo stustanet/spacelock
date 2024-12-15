@@ -38,7 +38,6 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
-
 @login_manager.user_loader
 def load_user(user_id):
     return User.get(user_id)
@@ -229,7 +228,6 @@ class ChangeSigningKeyView(MethodView):
 
         data = {
             'token': token['token'],
-            'token_url': settings.WIFI_SEND_URL + token['token']
         }
 
         return self.render(data)
@@ -262,13 +260,12 @@ def index():
             return render_template('error.html', error='DENIED!!!')
 
         expires_soon = None
-        valid_to = get_valid_to(request.form.get('secret_key'))
-        if valid_to - datetime.now(settings.TIMEZONE) < timedelta(weeks=2):
-            expires_soon = valid_to.astimezone(settings.TIMEZONE)
+        # valid_to = get_valid_to(request.form.get('secret_key'))
+        # if valid_to - datetime.now(settings.TIMEZONE) < timedelta(weeks=2):
+        #     expires_soon = valid_to.astimezone(settings.TIMEZONE)
 
         data = {
             'token': token['token'],
-            'token_url': settings.WIFI_SEND_URL + token['token'],
             'valid_until': token['valid_until'],
             'expires_soon': expires_soon,
         }

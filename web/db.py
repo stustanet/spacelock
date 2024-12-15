@@ -41,7 +41,7 @@ class Database:
             return
 
         while self.closed():
-            print("Connecting to databse")
+            print("Connecting to database")
             try:
                 self.conn = psycopg2.connect(**self.config)
             except (psycopg2.OperationalError, psycopg2.InternalError):
@@ -60,7 +60,6 @@ class Database:
 
 database = Database(settings.DB_CONFIG)
 
-
 def _exec_query(query, *params, fetchall=False):
     with database as cursor:
         try:
@@ -78,7 +77,8 @@ def _exec_query(query, *params, fetchall=False):
 
 
 def gen_token(key: str) -> Optional[str]:
-    res = _exec_query('SELECT gen_token(%s)', key)
+    #TODO: Replace hardcoded 'A'
+    res = _exec_query('SELECT compat_gen_token(%s, %s)', 'A', key)
     if res is None:
         return None
     return res[0]
