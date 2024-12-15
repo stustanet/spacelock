@@ -233,7 +233,7 @@ __weak void HAL_CRC_MspDeInit(CRC_HandleTypeDef *hcrc)
   * @param  BufferLength: length of the buffer to be computed (defined in word, 4 bytes)
   * @retval 32-bit CRC
   */
-uint32_t HAL_CRC_Accumulate(CRC_HandleTypeDef *hcrc, uint32_t pBuffer[], uint32_t BufferLength)
+uint32_t HAL_CRC_Accumulate(CRC_HandleTypeDef *hcrc, const volatile uint32_t pBuffer[], uint32_t BufferLength)
 {
   uint32_t index = 0U;
 
@@ -268,7 +268,7 @@ uint32_t HAL_CRC_Accumulate(CRC_HandleTypeDef *hcrc, uint32_t pBuffer[], uint32_
   * @param  BufferLength: Length of the buffer to be computed (defined in word, 4 bytes)
   * @retval 32-bit CRC
   */
-uint32_t HAL_CRC_Calculate(CRC_HandleTypeDef *hcrc, uint32_t pBuffer[], uint32_t BufferLength)
+uint32_t HAL_CRC_Calculate(CRC_HandleTypeDef *hcrc, const uint32_t pBuffer[], uint32_t BufferLength)
 {
   uint32_t index = 0U;
 

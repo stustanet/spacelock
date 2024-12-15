@@ -22,7 +22,8 @@ TARGET = Heimdall
 # debug build?
 DEBUG = 1
 # optimization
-OPT = -Og
+OPT = -O1
+#OPT = -Og
 
 
 #######################################
@@ -44,6 +45,7 @@ Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c \
+Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_i2c.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_adc.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rcc.c \
@@ -54,7 +56,11 @@ Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_pwr.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash_ex.c \
-system_stm32f1xx.c
+Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_crc.c \
+system_stm32f1xx.c \
+monocypher.c \
+monocypher-ed25519.c \
+rtc.c
 
 CPP_SOURCES = \
 beeper.cpp \
@@ -64,13 +70,12 @@ dcf77_analyze.cpp \
 deserialize.cpp \
 gregorian_calendar.cpp \
 hardware.cpp \
-hmac.cpp \
 interrupts.cpp \
 motor.cpp \
 pin.cpp \
-secret_key.cpp \
-sha256.cpp \
-time.cpp
+time.cpp \
+utf8.cpp \
+key_storage.cpp
 
 # ASM sources
 ASM_SOURCES =  \

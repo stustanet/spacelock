@@ -21,3 +21,10 @@ uint32_t deserialize_u32(const uint8_t *buf) {
         (static_cast<uint32_t>(buf[3]) << 24)
     );
 }
+
+uint32_t deserialize_u16(const uint8_t *buf) {
+    return (
+        (static_cast<uint32_t>(buf[0]) <<  0) |
+        (static_cast<uint32_t>(buf[1]) <<  8)
+    );
+}

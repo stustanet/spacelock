@@ -57,6 +57,8 @@ void Error_Handler(void);
 
 extern UART_HandleTypeDef huart1;
 extern TIM_HandleTypeDef htim1;
+extern I2C_HandleTypeDef hi2c1;
+extern CRC_HandleTypeDef hcrc1;
 
 /* USER CODE END EFP */
 

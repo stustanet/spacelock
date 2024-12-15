@@ -242,8 +242,12 @@ void EndStopDetector::current_received(uint32_t current_uA)
         edge_max_uA = filtered_current_uA;
     }
 
+    //TODO debug
+#ifdef CURRENT_DEBUG_MSG
     uart_write_u16((uint16_t)(filtered_current_uA / 1000));
     uart_write_u16((uint16_t)(it_integral_uA_us / 100000000));
+#endif
+
 }
 
 EndStopState EndStopDetector::get_end_stop_state(uint64_t *timestamp)

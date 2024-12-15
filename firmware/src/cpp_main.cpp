@@ -7,12 +7,19 @@
 #include "hardware.h"
 #include "hmac.h"
 #include "motor.h"
-#include "secret_key.h"
+#include "key_storage.h"
 #include "sha256.h"
 #include "time.h"
+#include "monocypher-ed25519.h"
+#include "utf8.h"
+#include "rtc.h"
+
+#include <cstring>
+
 
 static void cpp_main_in_cpp();
 static void open_door(StepperMotor &motor);
+uint8_t sync_time_from_rtc(void);
 
 static void open_door(StepperMotor &motor)
 {
@@ -35,6 +42,8 @@ static void open_door(StepperMotor &motor)
         uart_writeline("N");
     }
 
+    //motor.rotate(1000000, 1000000 * 4, -1);
+
     motor.set_mode(0);
      sleep_us(1000000);
     motor.set_mode(-1);
@@ -45,27 +54,6 @@ static void open_door(StepperMotor &motor)
     motor.set_mode(0);
 }
 
-static bool check_info(const uint8_t *info, uint32_t info_size)
-{
-    if (info_size < 1)
-    {
-        return false;
-    }
-
-    while (info_size)
-    {
-        if (*info < 0x20 || *info >= 0x7f)
-        {
-            // illegal character in info string
-            return false;
-        }
-
-        info++;
-        info_size -= 1;
-    }
-    return true;
-}
-
 /**
  * This function is not used in the code.
  * It exists so that it can be comfortably called
@@ -74,7 +62,39 @@ static bool check_info(const uint8_t *info, uint32_t info_size)
 __attribute__((used))
 void reset_secret_key()
 {
-    secret_key_write((unsigned char *)"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+    //secret_key_write((unsigned char *)"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+}
+
+uint8_t sync_time_from_rtc(void)
+{
+
+    //time handling via RTC
+    //read rtc
+    sleep_us(1000000);
+    uint64_t current_unix_time = read_rtc();
+
+    if ((current_unix_time > 3155803200)||(current_unix_time < 1600000000)) //rtc_read sometimes glitches, not sure why //TODO
+    {
+	//try again
+	sleep_us(1000000);
+	current_unix_time = read_rtc();
+    }
+
+    if (current_unix_time > 3155803200) //rtc_read sometimes glitches, not sure why //TODO
+    {
+	return 0; //error
+    }
+
+    //set offset
+    set_timestamp(time_get_64(), current_unix_time);
+
+    // this is a dummy
+    if (current_unix_time == 0) //need to run this function from gdb
+    {
+	write_rtc(24,4,5,19,16,20,0);
+    }
+
+    return 1;
 }
 
 static void cpp_main_in_cpp()
@@ -101,12 +121,67 @@ static void cpp_main_in_cpp()
     OutputPin led_timestate(GPIOC, GPIO_PIN_14);
 
     InputPin dcf77_pin(GPIOA, GPIO_PIN_8);
-    dcf77_init(&dcf77_pin, &led_timestate);
+    //dcf77_init(&dcf77_pin, &led_timestate);
+
+
+    if (!sync_time_from_rtc())
+    {
+	//it failed
+	led_timestate.reset();
+	uart_writeline("Time read from RTC invalid! \U0001F389");
+    }
+ 
+    init_keystore();
+
+    if (used_store >2)
+    {
+	//no valid keystore found and not uninitialized
+	led_doorstate.reset();
+	led_timestate.reset();
+	uart_writeline("no valid keystore found and not uninit! \U0001F389");
+    }
+    if (owner_system_id == 0 && owner_door_id == 0)
+    {
+	uart_writeline("Spacelock not owned! \U0001F389");
+    }
 
     uart_writeline("Spacelock initialized! \U0001F389");
 
     while (1)
     {
+
+	uint64_t current_timestamp = get_timestamp();
+
+	//do some housekeeping
+	if ((current_timestamp%(3600*24)) == 0)
+	{
+	    //once a day
+	    led_timestate.reset();
+	    if (!verify_keystore())
+	    {
+		led_doorstate.reset();
+	    }
+	    if (sync_time_from_rtc())
+	    {
+		led_timestate.set();
+	    }
+	    sleep_us(1000000);
+
+	} else if (current_timestamp%60 == 0)
+	{
+	    //every start of a minute
+	    led_timestate.reset();
+	} else if ((current_timestamp%60 == 1) && (current_timestamp%3600 > 59))
+	{
+	    //one second later, but not in the first minute of the hour
+	    led_timestate.set();
+	} else if (current_timestamp%3600 >= 60)
+	{
+	    //for the first minute of the hour
+	    led_timestate.set();
+	}
+
+
         UARTRxBuffer *message = uart_poll_message();
         if (message == nullptr)
         {
@@ -151,106 +226,346 @@ static void cpp_main_in_cpp()
             continue;
         }
 
-        // all messages have the following format:
-        //    uint8_t   hmac_signature[HMAC_SIZE]
-        //    uint64_t  valid_from
-        //    uint64_t  valid_until
-        //    uint8_t   type
-        //    uint8_t   payload[]       (variable length)
+	//parse message
 
-        if (size <= HMAC_SIZE + 17)
+        // all messages have the following format:
+        //    uint8_t   signature[64]
+        //    uint32_t  valid_from (unixtime/60)
+        //    uint16_t  minutes_valid
+        //    1x utf-8   system_id
+        //    1x utf-8   key_id
+        //    1x utf-8   msg_type
+	//
+        //    uint8_t   payload[]       (variable length)
+	//
+#define SYSTEM_ID_OFFSET SIG_SIZE+6
+
+        if (size <= SIG_SIZE + 9)
         {
             // the message is too small
             uart_writeline("message is too small");
             continue;
         }
 
-        // calculate the message HMAC
-        uint8_t digest[32];
-        hmac(message->buf.data() + HMAC_SIZE, size - HMAC_SIZE, digest);
 
-        // prevent timing side-channel attacks through the use of 'volatile'
-        volatile bool signature_ok = true;
-        for (uint32_t i = 0; i < HMAC_SIZE; i++)
-        {
-            signature_ok &= (digest[i] == message->buf[i]);
-        }
-        if (!signature_ok)
-        {
-            uart_writeline("HMAC fail");
-            continue;
-        }
+	//check signature
 
-        // see if the timestamp is valid.
-        uint64_t valid_from = deserialize_u64(&message->buf[HMAC_SIZE]);
-        uint64_t valid_until = deserialize_u64(&message->buf[HMAC_SIZE + 8]);
 
-        uint64_t current_timestamp = get_timestamp();
+	//get the signature key
+	uint16_t offset = SYSTEM_ID_OFFSET;
+	
+	uint32_t system_id = deserialize_utf8(message->buf.data(), &offset, 1);
+	uint32_t key_id = deserialize_utf8(message->buf.data(), &offset, 1);
 
-        if (valid_from > current_timestamp)
-        {
-            // message is not yet valid
-            uart_writeline("message is not yet valid, internal clock 0x", &current_timestamp);
-            continue;
-        }
-        if (valid_until < current_timestamp)
-        {
-            // mesage is no longer valid
-            uart_writeline("message is no longer valid, internal clock 0x", &current_timestamp);
-            continue;
-        }
+	if (!system_id | !key_id)
+	{
+	    uart_writeline("invalid system or key");
+	    continue;
+	}
 
-        const uint8_t message_type = message->buf[HMAC_SIZE + 16];
-        const uint8_t *payload = &(message->buf[HMAC_SIZE + 17]);
-        uint8_t payload_size = size - HMAC_SIZE - 17;
+	uint8_t current_key_index = get_key_index(system_id, key_id,'1'); //key type must be '1' for now, TODO
+
+	if (current_key_index == 0)
+	{
+	    //we don't have that key in our store
+
+	    //check if we are owned
+	    if (owner_system_id != 0 || owner_door_id != 0)
+	    {
+		uart_writeline("unknown system or key");
+		continue;
+	    }
+
+	    //special case, system is new and not yet owned, so we don't abort and don't check the signature
+	    //check if this is an "init" type message
+	    if (deserialize_utf8(message->buf.data(), &offset, 0) != 'I')
+	    {
+		//not an init type message, abort
+		continue;
+	    }
+	}
+	else
+	{
+	    //check ed25519 signature
+	    if (crypto_ed25519_check(message->buf.data(), keystore[current_key_index].key, message->buf.data() + SIG_SIZE, size-SIG_SIZE)) {
+	    // Message is corrupted, do not trust it
+		uart_writeline("signature check fail");
+		continue;
+	    } 
+	    //else Message is genuine
+
+	    // see if the timestamp is valid.
+	    uint32_t valid_from = deserialize_u32(&message->buf[SIG_SIZE]); //unix time in minutes
+	    uint16_t valid_time = deserialize_u16(&message->buf[SIG_SIZE+4]); //delta in minutes
+
+	    current_timestamp = get_timestamp();
+
+	    if (valid_from > current_timestamp/60)
+	    {
+		// message is not yet valid
+		uart_writeline("message is not yet valid, internal clock 0x", &current_timestamp);
+#ifndef DEBUG_EN
+		continue;
+#endif
+	    }
+	    if (valid_from + valid_time < current_timestamp/60)
+	    {
+		// mesage is no longer valid
+		uart_writeline("message is no longer valid, internal clock 0x", &current_timestamp);
+#ifndef DEBUG_EN
+		continue;
+#endif
+	    }
+	}
+
+	uint32_t message_type = deserialize_utf8(message->buf.data(), &offset, 1);
+
+	uint32_t target_door_id = 0;
 
         // the message is valid, do its bidding.
         switch (message_type)
         {
-        case 0x01:
+        case 'I':
         {
-            // an 'open the door' message.
+            // an 'init' message. set the owner of a door.
             // payload:
-            //    char *    uid             (variable length)
+            //    1x utf-8 system_id
+	    //    1x utf-8 key_id
+	    //    1x utf-8 key_type
+	    //    uint8_t[32] key
+	    //    1x utf-8 door_id
+	    //    uint8_t 0x00 stop
 
-            if (!check_info(payload, payload_size))
-            {
-                // info is not valid
-                uart_writeline("message info is not valid");
-                continue;
-            }
+	    // check if we are owned
+	    if (owner_system_id != 0 || owner_door_id != 0)
+	    {
+		//system is already owned, so ignore message
+		uart_writeline("door is already initialized");
+		break;
+	    }
 
-            // it seems like you're in luck.
-            uart_writeline("opening door");
-            open_door(motor);
+	    //update keyslot 1 and owner info
+	    owner_system_id = deserialize_utf8(message->buf.data(), &offset, 1);
+	    keystore[1].system_id = owner_system_id;
+	    keystore[1].key_id = deserialize_utf8(message->buf.data(), &offset, 1);
+	    keystore[1].key_type = deserialize_utf8(message->buf.data(), &offset, 1);
+
+	    memcpy(keystore[1].key, message->buf.data()+offset,32); //key is 32 bytes
+	    offset += 32;
+	    
+	    owner_door_id = deserialize_utf8(message->buf.data(), &offset, 1);
+	    keystore[1].door_id = owner_door_id;
+
+
+	    //write owner and keystore to flash
+	    owner_write();
+	    key_store_write();
+	    uart_writeline("door initialized");
+
+
+	    break;
+	}
+	case 'O':
+	{
+	    // "open" message, open doors with provided ids in this system_id
+	    // payload:
+	    //   1x utf-8 door_id1
+	    //   (1x utf-8 door_id2)
+	    //   .
+	    //   .
+	    //   .
+	    //   uint8_t 0x00 stop
+
+	    // get our doorid for this key and check if in list
+	    do
+	    {
+		target_door_id = deserialize_utf8(message->buf.data(), &offset, 1);
+		if (target_door_id == keystore[current_key_index].door_id)
+		{
+		    // it seems like you're in luck.
+		    uart_writeline("opening door");
+		    open_door(motor);
+		}
+	    } while (target_door_id != 0);
+
+	    uart_writeline("end of door_string");
             break;
         }
-        case 0x02:
+        case 'U':
         {
-            // an 'new SECRET_KEY' message.
+            // an 'Update key' message. add new key to keystore. only owner may do this
             // payload:
-            //    uint8_t *    new_key_seed            (variable length)
+            //    1x utf-8 system_id (of the new key)
+	    //    1x utf-8 key_id (of the new key)
+	    //    1x utf-8 key_type (of the new key)
+	    //    uint8_t[32] key
+	    //    2x utf-8 doortupel
+	    //    (2x utf-8 doortupel)
+	    //    .
+	    //    .
+	    //    .
+	    //    uint8_t 0x00 stop
+	   uint32_t read_owner_door_id = 0;
 
-            if (payload_size < 1)
-            {
-                uart_writeline("payload is not valid");
-                continue;
-            }
+	    // check, that the message is signed by the owner! only the owner may add key!
 
-            // calculate the new secret key
-            SHA256 hash;
-            hash.update(SECRET_KEY, sizeof(SECRET_KEY));
-            hash.update(payload, payload_size);
-            uint8_t digest[32];
-            hash.calculate_digest(digest);
+	    if (keystore[current_key_index].system_id != owner_system_id)
+	    {
+		uart_writeline("add key not allowed");
+		break;
+	    }
 
-            uart_writeline("writing new secret key");
+	    uint32_t new_system_id = deserialize_utf8(message->buf.data(), &offset, 1);
+	    uint32_t new_key_id = deserialize_utf8(message->buf.data(), &offset, 1);
+	    uint32_t new_key_type = deserialize_utf8(message->buf.data(), &offset, 1);
 
-            // write the new secret key
-            secret_key_write(digest);
+	    //check if this key is already in keystore...
+	    if (get_key_index(new_system_id, new_key_id, new_key_type) != 0)
+	    {
+		//key already exists in keystore
+		uart_writeline("key is already in keystore");
+		break;
+	    }
+
+	    uint16_t key_offset = offset;
+	    //jump over key
+	    offset += 32;
+
+	    //check if we are in the list of doors
+	    do
+	    {
+		//get two utf-8 chars
+		target_door_id = deserialize_utf8(message->buf.data(), &offset, 1);
+		if (target_door_id == 0)
+		{
+		    //end of list
+		    uart_writeline("local door id not in list");
+		    break;
+		}
+		read_owner_door_id = deserialize_utf8(message->buf.data(), &offset, 1);
+		if (read_owner_door_id == 0)
+		{
+		    //irregular end of list
+		    uart_writeline("error in door id list");
+		    break;
+		}
+
+		if (read_owner_door_id != owner_door_id)
+		{
+		    //we are not meant with this tupel
+#ifdef DEBUG_EN
+		    uart_writeline(".");
+#endif
+		    continue; //next tupel
+		}
+
+		//we found a tupel for us
+		
+		uart_writeline("trying to add new key");
+
+		verify_keystore();
+		if (used_store > 2)
+		{
+		    uart_writeline("keystore corruped");
+		    break;
+		}
+
+		uint8_t new_keyslot = get_free_key_slot();
+		if (new_keyslot == 0)
+		{
+		    uart_writeline("no more free keyslots available");
+		    break;
+		}
+		keystore[new_keyslot].door_id = target_door_id;
+		keystore[new_keyslot].key_id = new_key_id;
+		keystore[new_keyslot].key_type = new_key_type ;
+		keystore[new_keyslot].system_id = new_system_id;
+		memcpy(keystore[new_keyslot].key, message->buf.data()+key_offset,32); //key is 32 bytes
+
+		uart_writeline("new key added");
+
+		//write keystore to flash
+		key_store_write();
+
+		//sorry, we only add one door id
+		break;
+
+	    } while (target_door_id != 0);
+	    uart_writeline("command complete");
 
             break;
         }
+	case 'F':
+	{
+            // 'flush' message. remove all keys of system, except specified key. only owner may do this
+            // payload:
+            //    1x utf-8 system_id for keys to delete
+	    //    1x utf-8 key_id of the key to retain
+	    //    1x utf-8 door_id1 in this system, not the owner system
+	    //    (1y utf-8 door_id2)
+	    //    .
+	    //    .
+	    //    .
+	    //    uint8_t 0x00 stop
+
+
+	    // check, that the message is signed by the owner! only the owner may add and remove key!
+
+	    if (keystore[current_key_index].system_id != owner_system_id)
+	    {
+		uart_writeline("flush key not allowed");
+		break;
+	    }
+	    uint32_t target_system_id = deserialize_utf8(message->buf.data(), &offset, 1); //from this system we flush keys
+	    uint32_t target_key_id = deserialize_utf8(message->buf.data(), &offset, 1); //except this one we keep
+
+	    verify_keystore();
+	    if (used_store > 2)
+	    {
+		uart_writeline("keystore corruped");
+		break;
+	    }
+
+	    uint8_t key_to_retain_index = get_key_index(target_system_id, target_key_id, '1'); //get the index of the key to retain
+
+	    if (key_to_retain_index == 0)
+	    {
+		//the key is not in store
+		//Abort with noise TODO
+		uart_writeline("error: key to retain not in keystore");
+		break;
+	    }
+
+	    //check if door_ids contains own door_id in this system
+	    do
+	    {
+		target_door_id = deserialize_utf8(message->buf.data(), &offset, 1);
+		if (target_door_id == keystore[key_to_retain_index].door_id)
+		{
+		    // it seems like you're in luck.
+		    uart_writeline("door action is requested");
+		    //if in door list: check if target_system_id|target_key_id in keystore
+
+		    if (get_key_index(target_system_id, target_key_id, '1') != 0)
+		    {
+			//if yes remove all other keys for target_system_id, retain target_key_id
+			remove_system_except_one_key(target_system_id, target_key_id);
+			// write keystore to flash
+			key_store_write();
+		    }
+		    else
+		    {
+			//if not abort with audible error
+			//TODO make noise
+			uart_writeline("error: key to retain not in keystore");
+			break;
+		    }
+		}
+	    } while (target_door_id != 0);
+	    uart_writeline("command complete");
+
+	    break;
+	}
         default:
         {
             // unknown message type
